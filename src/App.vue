@@ -84,7 +84,7 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
           <section v-else class="picker-card stock-card" aria-label="幸运选股">
             <div class="card-kicker"><span>02 / 遇见一只股票</span><span>给探索一个随机的起点</span></div>
             <nav class="stock-pool-tabs" aria-label="选择股票池"><button :class="{active:stockMode==='all'}" :aria-pressed="stockMode==='all'" @click="stockMode='all'">全市场随机</button><button :class="{active:stockMode==='hot'}" :aria-pressed="stockMode==='hot'" @click="stockMode='hot'">热门股盲选<span>HOT</span></button></nav>
-            <HotStockPicker v-show="stockMode==='hot'" @copy="copy" @picked="remember('热门股盲选',$event)" @notice="notify"/>
+            <HotStockPicker :active="mode==='stock' && stockMode==='hot'" v-show="stockMode==='hot'" @copy="copy" @picked="remember('热门股盲选',$event)" @notice="notify"/>
             <div v-show="stockMode==='all'">
             <div class="stock-intro"><span class="stock-icon"><AppIcon name="chart" :size="28"/></span><div><h2>下一站，遇见哪家公司？</h2><p>从 {{stocks.length.toLocaleString()}} 只沪深股票中，随机抽取一只。</p></div></div>
             <div class="stock-scope"><span class="scope-dot"></span>东方财富股票池<span>沪市 / 深市 / 创业板 / 科创板</span></div>
