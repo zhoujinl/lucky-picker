@@ -16,3 +16,6 @@ Task 2: complete — browser checked all four games, 1/10-group generation, copy
 Task 3: local result retained on feat/initial-app per approved local-only delivery; no upstream/base branch exists in this new repository.
 Task 3: complete — final full suite 26/26; vue-tsc and Vite production build passed; static subpath preview verified in browser. README and Pages workflow included. No remote deployment attempted.
 Final review: no deferred minor items; all three Important findings fixed with browser RED→GREEN checks and green full suite. See docs/verification.md.
+
+Stock update (user request): direct Eastmoney RPT_DMSK_TS_STOCKNEW retrieval, 11 pages / 5199 unique entries / dataDate 2026-10-20, replaces 16-stock sample. npm run update:stocks validates then atomically replaces data; failures preserve prior snapshot. No remote publishing.
+Stock update RED→GREEN: provider normalization/aggregation tests and atomic-output integration tests; live-data investigation corrected missing listing state, risk-board mappings and CDR scope. Full suite45 passed, production build passed, browser verified count/date/provenance and real stock result. Fresh review approved, visitor-facing maintainer message removed.

@@ -6,7 +6,7 @@ import HistoryList from './components/HistoryList.vue'
 import {formatTicket,generateTickets,lotteries,pickStock,replaceTicket,type LotteryId,type Ticket} from './lib/picker'
 import {readHistory,saveHistory,type HistoryEntry} from './lib/history'
 import {copyText} from './lib/clipboard'
-import {stocks,stockPoolUpdatedAt,stockSources,type Stock} from './data/stocks'
+import {stocks,stockPoolUpdatedAt,stockPoolFetchedAt,stockPoolCoverage,stockSources,type Stock} from './data/stocks'
 const mode=ref<'lottery'|'stock'>('lottery')
 const selected=ref<LotteryId>('ssq')
 const lottery=computed(()=>lotteries.find(l=>l.id===selected.value)!)
@@ -76,13 +76,13 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
           </section>
           <section v-else class="picker-card stock-card" aria-label="幸运选股">
             <div class="card-kicker"><span>02 / 遇见一只股票</span><span>给探索一个随机的起点</span></div>
-            <div class="stock-intro"><span class="stock-icon"><AppIcon name="chart" :size="28"/></span><div><h2>下一站，遇见哪家公司？</h2><p>从 {{stocks.length}} 只 A 股样本中，随机抽取一只。</p></div></div>
-            <div class="stock-scope"><span class="scope-dot"></span>精选股票池<span>沪市主板 / 深市主板 / 创业板</span></div>
+            <div class="stock-intro"><span class="stock-icon"><AppIcon name="chart" :size="28"/></span><div><h2>下一站，遇见哪家公司？</h2><p>从 {{stocks.length.toLocaleString()}} 只沪深股票中，随机抽取一只。</p></div></div>
+            <div class="stock-scope"><span class="scope-dot"></span>东方财富股票池<span>沪市 / 深市 / 创业板 / 科创板</span></div>
             <div v-if="!stock" class="stock-empty"><div class="stock-code-placeholder">------</div><p>把好奇心交给随机</p><span>点击下方按钮，发现你的幸运股票</span></div>
             <div v-else :key="generation" class="stock-result"><span class="stock-market">{{stock.market}}</span><p class="stock-code">{{stock.code}}</p><h3>{{stock.name}}</h3><button class="text-button" @click="copy(`${stock.code} ${stock.name} · ${stock.market}`)"><AppIcon name="copy" :size="15"/>复制股票信息</button></div>
             <button class="button button-primary stock-draw" @click="drawStock()"><AppIcon name="shuffle"/>{{stock?'再抽一只':'随机选一只'}}<AppIcon name="arrow" :size="18"/></button>
-            <div class="stock-meta"><span>股票池更新：{{stockPoolUpdatedAt}}</span><button class="text-button" :aria-expanded="sourceOpen" @click="sourceOpen=!sourceOpen">{{sourceOpen?'收起来源':'范围与来源'}}<AppIcon name="chevron" :size="12"/></button></div>
-            <div v-if="sourceOpen" class="source-details"><p>这是人工维护的 {{stocks.length}} 只股票样本，不覆盖全部 A 股。更新日期为样本整理日期，不代表实时核验上市、停牌或名称状态。没有行情数据。</p><a v-for="source in stockSources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{source.title}} ↗</a></div>
+            <div class="stock-meta"><span>数据日期：{{stockPoolUpdatedAt}}</span><button class="text-button" :aria-expanded="sourceOpen" @click="sourceOpen=!sourceOpen">{{sourceOpen?'收起来源':'范围与来源'}}<AppIcon name="chevron" :size="12"/></button></div>
+            <div v-if="sourceOpen" class="source-details"><p>{{stockPoolCoverage}}，共 {{stocks.length.toLocaleString()}} 只。保留接口返回的 ST、*ST 及状态未注明的股票，不根据交易状态筛选；不提供实时行情。</p><p>最近抓取：{{new Date(stockPoolFetchedAt).toLocaleString('zh-CN',{hour12:false})}}。</p><a v-for="source in stockSources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{source.title}} ↗</a></div>
           </section>
           <div class="gentle-note"><AppIcon name="heart" :size="17"/><p>{{mode==='lottery'?'号码有随机，生活有热爱。理性参与，让好运保持轻盈。':'随机只是探索的起点。保持好奇，也保持自己的判断。'}}</p></div>
         </div>
