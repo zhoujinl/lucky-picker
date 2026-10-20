@@ -1,0 +1,15 @@
+{
+  "attemptedAt": "2026-10-20T17:38:33.654Z",
+  "success": true,
+  "sources": {
+    "eastmoney": {
+      "ok": true,
+      "count": 100
+    },
+    "ths": {
+      "ok": true,
+      "count": 100
+    }
+  },
+  "error": null
+}

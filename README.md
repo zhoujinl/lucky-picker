@@ -9,6 +9,7 @@
 - 七个彩种均提供简明开奖规则、北京时间开奖日程，以及官方规则和日程来源链接；休市及调整以官方公告为准。
 - 单组重新生成、复制单组或全部；剪贴板不可用时提供手动复制文本。
 - 幸运选股：从东方财富接口抓取的 **5,199 只沪深股票**等概率抽取，展示代码、名称及所属市场。
+- 热门股盲选：东方财富人气榜＋同花顺小时热榜前 100 名合并去重，成交额 ≥ 5 亿元、换手率 ≥ 1%，排除 ST、退市名称及无有效行情的股票。符合条件的股票等概率抽取，显示排名、成交指标和行情日期。
 - 当前浏览器保存最近 50 次操作；可展开、复制或清空，支持存储不可用时继续使用。
 - 手机和电脑布局、键盘焦点、减少动画偏好；无远程字体或第三方运行时请求。
 
@@ -70,17 +71,9 @@ npm run build
 
 随机选号不提高中奖概率；随机选股仅供娱乐。
 
-## 后续上传 GitHub
+## GitHub 仓库
 
-本地已初始化 Git，开发工作保存在 `feat/initial-app` 分支，尚未创建或推送远程仓库。创建空的 GitHub 仓库后，可使用同一个项目：
-
-```sh
-git branch -m main
-git remote add origin https://github.com/YOUR_NAME/lucky-picker.git
-git push -u origin main
-```
-
-将 `YOUR_NAME` 替换为自己的 GitHub 用户名。也可用 GitHub CLI 创建仓库后推送。项目当前没有指定开源许可证；公开仓库前可按需要选择许可证。
+已推送至 [zhoujinl/lucky-picker](https://github.com/zhoujinl/lucky-picker)，默认分支 `main`。本地 `origin` 使用 SSH，可用 `git push` 推送已提交的后续修改。当前没有指定开源许可证。
 
 ## GitHub Pages
 
@@ -101,3 +94,25 @@ scripts/        # 股票池抓取、校验及测试
 public/         # 本地图标
 .github/workflows/deploy.yml
 ```
+
+## 热门股盲选与数据更新
+
+入口：幸运选股 → 热门股盲选。两个榜各取排名 1–100，合并去重后与本项目沪深股票池匹配，使用东方财富行情的成交额（元）、换手率（百分数）筛选。北交所及本项目股票池未收录的股票不入选。两个榜重叠只作“双榜上榜”标记，所有入池股票的抽中概率相同。当前快照 129 个热榜候选，筛选后 92 只，行情日期 2026-10-20；热榜抓取于 2026-10-21 01:38（北京时间）。股票可能下跌或已涨停，成交额和换手率只是流动性的代理指标，不保证可买入或未来上涨。
+
+```sh
+npm run update:hot-stocks
+npm test
+npm run build
+```
+
+更新脚本直接请求两个官方站点的接口，再分批查询东方财富行情，安全写入 `src/data/hot-stock-pool.json`。必须两源均完整返回前 100 名；任意来源失败、榜单截断或筛后无股票都会保留上次完整池，并在 `hot-stock-status.json` 记录失败原因，网页明确提示使用旧快照。网络请求有 20 秒超时。行情数字字段缺失、日期落后于本批最新日期的股票不入选，成交额和换手率使用接口当前累计值。开市前或休市时通常为最近交易日数据，盘中则为抓取时的累计值。
+
+这是随应用构建保存的快照，并非浏览器实时抓取；刷新页面不会更新上游数据。快照超过 24 小时会提示过期。运行更新命令后本地开发页面会更新，线上页面需提交 JSON、推送并重新构建部署。此版本未添加后台定时抓取。
+
+来源及接口（2026-10-21 验证可用，非承诺稳定的公开开发者 API）：
+
+- [东方财富人气榜及算法说明](https://guba.eastmoney.com/rank/)；POST `https://emappdata.eastmoney.com/stockrank/getAllCurrentList`。
+- [同花顺热榜](https://eq.10jqka.com.cn/webpage/ths-hot-list/index.html?showStatusBar=true)；GET `https://eq.10jqka.com.cn/open/api/hot_list/v1/hot_stock/a/hour/data.txt`，接口路径取自该官方页面的脚本。
+- [东方财富行情中心](https://quote.eastmoney.com/center/gridlist.html#hs_a_board)；GET `https://push2.eastmoney.com/api/qt/ulist.np/get`，字段 `f6` 成交额、`f8` 换手率、`f3` 涨跌幅、`f124` 行情时间戳。
+
+热榜反映平台关注度，不等于上涨概率。功能不提供胜率估计、收益预测或买入建议。
