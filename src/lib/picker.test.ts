@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { generateTickets, pickStock, randomInt, replaceTicket, type LotteryId } from './picker'
+import { formatTicket, generateTickets, lotteries, pickStock, randomInt, replaceTicket, type LotteryId } from './picker'
 afterEach(() => vi.restoreAllMocks())
 describe('lottery rules', () => {
-  it.each<[LotteryId, number, number, number, number]>([['ssq',6,33,1,16], ['dlt',5,35,2,12]])('%s obeys zone counts, ranges, sorting and uniqueness', (id, n, max, backN, backMax) => {
+  it.each<[LotteryId, number, number, number, number]>([['ssq',6,33,1,16], ['dlt',5,35,2,12], ['qlc',7,30,0,0]])('%s obeys zone counts, ranges, sorting and uniqueness', (id, n, max, backN, backMax) => {
     for (let batch = 0; batch < 30; batch++) {
       const tickets = generateTickets(id,10)
       expect(tickets).toHaveLength(10)
@@ -17,7 +17,7 @@ describe('lottery rules', () => {
       }
     }
   })
-  it.each<[LotteryId,number]>([['pl3',3],['pl5',5]])('%s preserves digit positions and permits repeated zeros', (id,n) => {
+  it.each<[LotteryId,number]>([['pl3',3],['pl5',5],['fc3d',3]])('%s preserves digit positions and permits repeated zeros', (id,n) => {
     vi.spyOn(crypto,'getRandomValues').mockImplementation((array) => { (array as Uint32Array).fill(0); return array })
     expect(generateTickets(id,1)).toEqual([{primary:Array(n).fill(0),secondary:[]}])
   })
@@ -57,5 +57,35 @@ describe('random sampling', () => {
     expect(pickStock()).toEqual(stocks.at(-1))
     expect(new Set(stocks.map(s=>s.code)).size).toBe(stocks.length)
     expect(stocks.every(s=>/^\d{6}$/.test(s.code) && s.name && s.market)).toBe(true)
+  })
+})
+
+describe('new lottery formats', () => {
+  it('7星彩 retains six ordered digits and an independent final 0–14 number', () => {
+    const values=[9,0,9,1,0,2,14]
+    vi.spyOn(crypto,'getRandomValues').mockImplementation(array=>{(array as Uint32Array)[0]=values.shift()!;return array})
+    const ticket=generateTickets('qxc',1)[0]
+    expect(ticket).toEqual({primary:[9,0,9,1,0,2],secondary:[14]})
+    expect(formatTicket('qxc',ticket)).toBe('9 0 9 1 0 2 + 14')
+  })
+  it('7星彩 permits zeros in every position', () => {
+    vi.spyOn(crypto,'getRandomValues').mockImplementation(array=>{(array as Uint32Array).fill(0);return array})
+    expect(formatTicket('qxc',generateTickets('qxc',1)[0])).toBe('0 0 0 0 0 0 + 0')
+  })
+  it('generates ten distinct 7星彩 tickets and replaces only the requested row', () => {
+    const tickets=generateTickets('qxc',10)
+    expect(new Set(tickets.map(t=>JSON.stringify(t))).size).toBe(10)
+    for(const t of tickets){expect(t.primary).toHaveLength(6);expect(t.primary.every(n=>n>=0&&n<=9)).toBe(true);expect(t.secondary).toHaveLength(1);expect(t.secondary[0]).toBeGreaterThanOrEqual(0);expect(t.secondary[0]).toBeLessThanOrEqual(14)}
+    const next=replaceTicket('qxc',tickets,3)
+    expect(next[3]).not.toEqual(tickets[3])
+    expect(next.filter((_,i)=>i!==3)).toEqual(tickets.filter((_,i)=>i!==3))
+  })
+  it('formats 福彩3D positions and 七乐彩 selections correctly',()=>{
+    expect(formatTicket('fc3d',{primary:[0,0,9],secondary:[]})).toBe('0 0 9')
+    expect(formatTicket('qlc',{primary:[1,2,3,4,5,6,30],secondary:[]})).toBe('01 02 03 04 05 06 30')
+  })
+  it('provides a schedule and introduction for all seven lotteries',()=>{
+    expect(lotteries).toHaveLength(7)
+    for(const rule of lotteries){expect(rule.drawSchedule).toMatch(/21:/);expect(rule.drawRule.length).toBeGreaterThan(15);expect(rule.scheduleUrl).toMatch(/^https:/)}
   })
 })

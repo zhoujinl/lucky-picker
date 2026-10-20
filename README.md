@@ -4,8 +4,9 @@
 
 ## 功能
 
-- 双色球、超级大乐透、排列三、排列五；一键生成 1 组或 10 组。
-- 双色球与大乐透区内去重并排序；排列三/五按位生成，保留前导零并允许重复数字。一次 10 组避免完全相同的组合。
+- 双色球、超级大乐透、排列三、排列五、福彩3D、7星彩、七乐彩；一键生成 1 组或 10 组。
+- 双色球、大乐透与七乐彩区内去重并排序；排列三/五和福彩3D按位生成，保留前导零并允许重复数字。7星彩按前六位 0–9、末位 0–14 生成，保留位置与重复数字。七乐彩只生成 7 个投注号码，特别号由开奖摇出。一次 10 组避免完全相同的组合。
+- 七个彩种均提供简明开奖规则、北京时间开奖日程，以及官方规则和日程来源链接；休市及调整以官方公告为准。
 - 单组重新生成、复制单组或全部；剪贴板不可用时提供手动复制文本。
 - 幸运选股：从东方财富接口抓取的 **5,199 只沪深股票**等概率抽取，展示代码、名称及所属市场。
 - 当前浏览器保存最近 50 次操作；可展开、复制或清空，支持存储不可用时继续使用。
@@ -56,6 +57,14 @@ npm run build
 - [甘肃体彩：大乐透规则](https://www.gstc.org.cn/newsDetail/030600/030601)
 - [国家体育总局：排列三规则](https://www.sport.gov.cn/cpzx/n5649/c663326/content.html)
 - [中国体彩：排列五规则](https://m.lottery.gov.cn/ksjz/plw/guize/)
+- [上海福彩：福彩3D规则](https://www.swlc.net.cn/games/3d.html)
+- [上海福彩：七乐彩规则](https://www.swlc.net.cn/games/qlc.html)
+- [内蒙古体彩：7星彩规则](https://www.nmtc.com.cn/ggtz/21145.html)
+- [中国体彩：2023年起调整开奖时间](https://m.lottery.gov.cn/xxgk/tzggz/20221220/10027143.html)
+- [陕西体彩：各彩种开奖日程](https://m.sxtc.com.cn/cjdlt/list/page.html)
+- [上海福彩：3D开奖时间](https://www.swlc.net.cn/lottery/3d.html?view=previous)
+- [上海福彩：七乐彩开奖时间](https://www.swlc.net.cn/lottery/qlc.html?view=previous)
+- [深圳民政：双色球开奖时间](https://mzj.sz.gov.cn/szmz/pc/bmxx/mzfwzy/flcp/bmxx/content/post_2929813.html)
 - [东方财富：千股千评](https://data.eastmoney.com/stockcomment/)
 - [实际使用的数据接口](https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_DMSK_TS_STOCKNEW&columns=SECURITY_CODE,SECURITY_NAME_ABBR,TRADE_MARKET_CODE,TRADE_DATE,LISTING_STATE,SECURITY_TYPE_CODE&pageNumber=1&pageSize=500&sortColumns=SECURITY_CODE&sortTypes=1&source=WEB&client=WEB)
 

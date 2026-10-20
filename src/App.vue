@@ -66,13 +66,18 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
         <div class="main-column">
           <section v-if="mode==='lottery'" class="picker-card" aria-label="幸运选号">
             <div class="card-kicker"><span>01 / 选择彩种</span><span>今天的好运，由你开启</span></div>
-            <div class="lottery-tabs" aria-label="选择彩种"><button v-for="l in lotteries" :key="l.id" :class="{selected:selected===l.id}" :aria-pressed="selected===l.id" @click="selectLottery(l.id)"><span class="lottery-symbol">{{l.id==='ssq'?'福':'体'}}</span><span>{{l.name}}<small>{{l.issuer}}</small></span><span v-if="selected===l.id" class="selected-dot"></span></button></div>
+            <div class="lottery-tabs" aria-label="选择彩种"><button v-for="l in lotteries" :key="l.id" :class="{selected:selected===l.id}" :aria-pressed="selected===l.id" @click="selectLottery(l.id)"><span class="lottery-symbol">{{l.issuer==='中国福利彩票'?'福':'体'}}</span><span>{{l.name}}<small>{{l.issuer}}</small></span><span v-if="selected===l.id" class="selected-dot"></span></button></div>
             <div class="rule-strip"><AppIcon name="info" :size="16"/><span>{{lottery.description}}</span><a :href="lottery.ruleUrl" target="_blank" rel="noopener noreferrer" aria-label="查看当前彩种官方规则">规则<AppIcon name="chevron" :size="12"/></a></div>
+            <section class="lottery-intro" aria-label="彩种介绍">
+              <div class="intro-heading"><h3>{{lottery.name}}小介绍</h3><a :href="lottery.scheduleUrl" target="_blank" rel="noopener noreferrer">开奖时间来源 ↗</a></div>
+              <dl><div><dt>开奖时间</dt><dd>{{lottery.drawSchedule}} <span>（北京时间）</span></dd></div><div><dt>开奖规则</dt><dd>{{lottery.drawRule}}</dd></div></dl>
+              <p>休市及临时调整以官方公告为准；完整玩法与奖级见上方官方规则。</p>
+            </section>
             <div class="generate-area"><div><h2>下一组，会是你的幸运数字吗？</h2><p>每一次随机，都是全新的可能。</p></div><div class="generate-buttons"><button class="button button-primary" @click="generate(1)"><AppIcon name="sparkle" :size="19"/>生成 1 组<AppIcon name="arrow" :size="18"/></button><button class="button button-secondary" @click="generate(10)"><AppIcon name="shuffle" :size="18"/>生成 10 组</button></div></div>
             <div class="results-header"><h3>你的幸运号码 <span v-if="tickets.length" class="count">{{tickets.length}} 组</span></h3><button v-if="tickets.length" class="text-button" @click="copy(allTickets())"><AppIcon name="copy" :size="15"/>复制全部</button><span v-else class="result-hint">等待一点好运降临</span></div>
-            <div v-if="!tickets.length" class="empty-result"><div class="placeholder-balls" aria-hidden="true"><span v-for="n in (lottery.secondaryCount?lottery.primaryCount:lottery.primaryCount)" :key="n">?</span><i v-if="lottery.secondaryCount">+</i><span v-for="n in lottery.secondaryCount" :key="'b'+n" class="placeholder-blue">?</span></div><p>点击上方按钮，揭晓你的专属号码</p></div>
+            <div v-if="!tickets.length" class="empty-result"><div class="placeholder-balls" aria-hidden="true"><span v-for="n in lottery.primaryCount" :key="n">?</span><i v-if="lottery.secondaryCount">+</i><span v-for="n in lottery.secondaryCount" :key="'b'+n" class="placeholder-blue">?</span></div><p>点击上方按钮，揭晓你的专属号码</p></div>
             <TicketList v-else :key="selected" :tickets="tickets" :lottery-id="selected" @copy="copy" @replace="regenerate"/>
-            <div class="card-footnote"><span><AppIcon name="shield" :size="14"/>独立随机生成</span><span>{{lottery.secondaryCount?'区内不重复 · 自动排序':'按位生成 · 数字可重复'}}</span></div>
+            <div class="card-footnote"><span><AppIcon name="shield" :size="14"/>独立随机生成</span><span>{{lottery.mode==='combination'?'区内不重复 · 自动排序':'按位生成 · 数字可重复'}}</span></div>
           </section>
           <section v-else class="picker-card stock-card" aria-label="幸运选股">
             <div class="card-kicker"><span>02 / 遇见一只股票</span><span>给探索一个随机的起点</span></div>
