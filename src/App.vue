@@ -16,7 +16,7 @@ const history=ref<HistoryEntry[]>(readHistory())
 const notice=ref('')
 const storageWarning=ref('')
 const manualCopy=ref('')
-const showClear=ref(false)
+const clearDialog=ref<HTMLDialogElement|null>(null)
 const sourceOpen=ref(false)
 const generation=ref(0)
 let timer:ReturnType<typeof setTimeout>|undefined
@@ -47,7 +47,7 @@ function drawStock(){
   try{stock.value=pickStock();generation.value++;remember('幸运选股',[`${stock.value.code} ${stock.value.name} · ${stock.value.market}`]);notify('你的幸运股票已揭晓')}
   catch(e){notify(e instanceof Error?e.message:'抽取失败，请重试')}
 }
-function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?'':'无法清除浏览器中的已存记录，请检查浏览器存储权限。';showClear.value=false;notify('当前记录已清空')}
+function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?'':'无法清除浏览器中的已存记录，请检查浏览器存储权限。';clearDialog.value?.close();notify('当前记录已清空')}
 </script>
 <template>
   <div class="app-shell">
@@ -71,7 +71,7 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
             <div class="generate-area"><div><h2>下一组，会是你的幸运数字吗？</h2><p>每一次随机，都是全新的可能。</p></div><div class="generate-buttons"><button class="button button-primary" @click="generate(1)"><AppIcon name="sparkle" :size="19"/>生成 1 组<AppIcon name="arrow" :size="18"/></button><button class="button button-secondary" @click="generate(10)"><AppIcon name="shuffle" :size="18"/>生成 10 组</button></div></div>
             <div class="results-header"><h3>你的幸运号码 <span v-if="tickets.length" class="count">{{tickets.length}} 组</span></h3><button v-if="tickets.length" class="text-button" @click="copy(allTickets())"><AppIcon name="copy" :size="15"/>复制全部</button><span v-else class="result-hint">等待一点好运降临</span></div>
             <div v-if="!tickets.length" class="empty-result"><div class="placeholder-balls" aria-hidden="true"><span v-for="n in (lottery.secondaryCount?lottery.primaryCount:lottery.primaryCount)" :key="n">?</span><i v-if="lottery.secondaryCount">+</i><span v-for="n in lottery.secondaryCount" :key="'b'+n" class="placeholder-blue">?</span></div><p>点击上方按钮，揭晓你的专属号码</p></div>
-            <TicketList v-else :key="`${selected}-${generation}`" :tickets="tickets" :lottery-id="selected" @copy="copy" @replace="regenerate"/>
+            <TicketList v-else :key="selected" :tickets="tickets" :lottery-id="selected" @copy="copy" @replace="regenerate"/>
             <div class="card-footnote"><span><AppIcon name="shield" :size="14"/>独立随机生成</span><span>{{lottery.secondaryCount?'区内不重复 · 自动排序':'按位生成 · 数字可重复'}}</span></div>
           </section>
           <section v-else class="picker-card stock-card" aria-label="幸运选股">
@@ -86,13 +86,13 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
           </section>
           <div class="gentle-note"><AppIcon name="heart" :size="17"/><p>{{mode==='lottery'?'号码有随机，生活有热爱。理性参与，让好运保持轻盈。':'随机只是探索的起点。保持好奇，也保持自己的判断。'}}</p></div>
         </div>
-        <aside class="side-column"><div class="good-luck-card"><div class="good-luck-top"><span>今日幸运签</span><AppIcon name="sparkle" :size="17"/></div><p>好事，<br/>正在发生。</p><div class="good-luck-bottom"><span>愿每一份期待，都有回响</span><span class="mini-spark">✳</span></div></div><HistoryList :entries="history" @copy="copy" @clear="showClear=true"/></aside>
+        <aside class="side-column"><div class="good-luck-card"><div class="good-luck-top"><span>今日幸运签</span><AppIcon name="sparkle" :size="17"/></div><p>好事，<br/>正在发生。</p><div class="good-luck-bottom"><span>愿每一份期待，都有回响</span><span class="mini-spark">✳</span></div></div><HistoryList :entries="history" @copy="copy" @clear="clearDialog?.showModal()"/></aside>
       </div>
       <p v-if="storageWarning" class="storage-warning" role="status">{{storageWarning}}</p>
       <section v-if="manualCopy" class="manual-copy" aria-label="手动复制"><div><h2>请选中文本，手动复制</h2><button class="icon-button" aria-label="关闭手动复制" @click="manualCopy=''"><AppIcon name="close"/></button></div><textarea :value="manualCopy" readonly aria-label="待复制文本" @focus="($event.target as HTMLTextAreaElement).select()"></textarea></section>
     </main>
     <footer class="site-footer"><div class="footer-brand"><AppIcon name="sparkle" :size="16"/>lucky picker<span>让选择，轻松一点。</span></div><p>随机选号不提高中奖概率 · 随机选股仅供娱乐</p><span class="footer-end">MADE FOR LITTLE POSSIBILITIES</span></footer>
     <div class="toast" :class="{visible:notice}" role="status" aria-live="polite"><AppIcon name="info" :size="17"/>{{notice}}</div>
-    <div v-if="showClear" class="dialog-backdrop" @click.self="showClear=false" @keydown.esc="showClear=false"><section role="dialog" aria-modal="true" aria-labelledby="clear-title" class="confirm-dialog"><h2 id="clear-title">清空最近记录？</h2><p>将移除当前浏览器中的全部生成记录。</p><div><button class="button button-secondary" autofocus @click="showClear=false">取消</button><button class="button button-primary" @click="clearHistory">确认清空</button></div></section></div>
+    <dialog ref="clearDialog" aria-labelledby="clear-title" class="confirm-dialog" @click="($event.target===$event.currentTarget) && clearDialog?.close()"><section><h2 id="clear-title">清空最近记录？</h2><p>将移除当前浏览器中的全部生成记录。</p><div class="dialog-actions"><button class="button button-secondary" autofocus @click="clearDialog?.close()">取消</button><button class="button button-primary" @click="clearHistory">确认清空</button></div></section></dialog>
   </div>
 </template>

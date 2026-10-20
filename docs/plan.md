@@ -1,6 +1,6 @@
 # lucky-picker Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 创建可在手机和电脑使用的幸运选号与幸运选股网页。
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Vue 3、TypeScript、Vite、Vitest。
 
-**Spec:** [已确认的实现规格](./lucky-picker-design.md)
+**Spec:** [已确认的实现规格](./design.md)
 
 ## Global Constraints
 
@@ -33,11 +33,11 @@
 
 **Interfaces:** `LotteryId = 'ssq' | 'dlt' | 'pl3' | 'pl5'`；`Ticket = { primary: number[]; secondary: number[] }`；`generateTickets(id: LotteryId, count: 1 | 10): Ticket[]`；`randomInt(maxExclusive: number): number`；`pickStock(): Stock`；`Stock = { code: string; name: string; market: string }`。
 
-- [ ] 检查目标目录与上级 AGENTS.md，初始化最小工程和测试配置。
-- [ ] 先写测试：双色球 6+1、范围 33/16；大乐透 5+2、范围 35/12；主区与副区分别去重排序；排列三/五长度 3/5、数字范围 0–9 且可重复；10 组唯一；股票结果属于池。
-- [ ] 增加拒绝采样边界测试，运行 `npm test` 确认缺失实现导致失败。
-- [ ] 实现接口与明确标注范围的股票池；核验彩种规则和股票资料来源，记录日期。
-- [ ] 运行 `npm test`，全部通过后提交该部分。
+- [x] 检查目标目录与上级 AGENTS.md，初始化最小工程和测试配置。
+- [x] 先写测试：双色球 6+1、范围 33/16；大乐透 5+2、范围 35/12；主区与副区分别去重排序；排列三/五长度 3/5、数字范围 0–9 且可重复；10 组唯一；股票结果属于池。
+- [x] 增加拒绝采样边界测试，运行 `npm test` 确认缺失实现导致失败。
+- [x] 实现接口与明确标注范围的股票池；核验彩种规则和股票资料来源，记录日期。
+- [x] 运行 `npm test`，全部通过后提交该部分。
 
 ## Task 2: 页面与记录
 
@@ -45,11 +45,11 @@
 
 **Interfaces:** 使用 Task 1 接口；`HistoryEntry = { id: string; createdAt: string; label: string; lines: string[] }`；`readHistory(): HistoryEntry[]`；`saveHistory(entries: HistoryEntry[]): boolean`；`copyText(text: string): Promise<boolean>`。
 
-- [ ] 写测试并运行确认失败：历史记录最多 50 次、损坏 JSON 与错误结构恢复为空、存储写入异常返回 false、剪贴板拒绝返回 false。
-- [ ] 实现历史和复制模块，通过测试。
-- [ ] 实现米白底色、红蓝圆球、彩种切换、1组/10组、单组与全部复制、单组重生成、选股和历史清空。
-- [ ] 浏览器检查单组重生成保留其他行、复制失败展示手动复制文本、刷新历史仍在、清空后不恢复。
-- [ ] 检查 375px 手机宽度、键盘焦点、减少动画设置；测试通过后提交该部分。
+- [x] 写测试并运行确认失败：历史记录最多 50 次、损坏 JSON 与错误结构恢复为空、存储写入异常返回 false、剪贴板拒绝返回 false。
+- [x] 实现历史和复制模块，通过测试。
+- [x] 实现米白底色、红蓝圆球、彩种切换、1组/10组、单组与全部复制、单组重生成、选股和历史清空。
+- [x] 浏览器检查单组重生成保留其他行、复制失败展示手动复制文本、刷新历史仍在、清空后不恢复。
+- [x] 检查 375px 手机宽度、键盘焦点、减少动画设置；测试通过后提交该部分。
 
 ## Task 3: 构建与交付
 
@@ -57,8 +57,8 @@
 
 **Interfaces:** `npm run dev` 启动本地预览；`npm test` 测试；`npm run build` 执行 TypeScript 检查及生产构建。
 
-- [ ] 配置 GitHub Pages 构建上传和部署工作流，Vite base 兼容项目子路径。
-- [ ] README 记录启动、验证、股票池范围及更新时间、后续上传 GitHub 与 Pages 启用方法。
-- [ ] 运行 `npm test` 和 `npm run build`，确认均成功。
-- [ ] 启动本地预览，在浏览器检查四种彩票、两种数量、选股与窄屏布局；记录无法验证的项目。
-- [ ] 检查最终改动，完成本地提交，打开预览并交付运行地址。
+- [x] 配置 GitHub Pages 构建上传和部署工作流，Vite base 兼容项目子路径。
+- [x] README 记录启动、验证、股票池范围及更新时间、后续上传 GitHub 与 Pages 启用方法。
+- [x] 运行 `npm test` 和 `npm run build`，确认均成功。
+- [x] 启动本地预览，在浏览器检查四种彩票、两种数量、选股与窄屏布局；记录无法验证的项目。
+- [x] 检查最终改动，完成本地提交，打开预览并交付运行地址。
