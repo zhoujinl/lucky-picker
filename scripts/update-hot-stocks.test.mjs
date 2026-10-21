@@ -38,3 +38,27 @@ it('rejects a truncated source list even when HTTP and payload report success',a
  await expect(updateHotStocks({...options,base,now,fetcher:truncated})).rejects.toThrow('同花顺')
  expect(await readFile(options.output,'utf8')).toBe('{"previous":true}')
 })
+it('refreshes current ranks with the previous completed session when pre-open quotes reset to zero',async()=>{
+ const options=await paths(),good=fetcher(false)
+ const preopen=async(url,opts)=>{
+  if(url.includes('/kline/get'))return {ok:true,json:async()=>({rc:0,data:{code:'000001',name:'甲',klines:['2026-10-20,1,1,1,1,1,600000000,0,-1,0,3']}})}
+  if(url.includes('/ulist.'))return {ok:true,json:async()=>({rc:0,data:{diff:[{f12:'000001',f14:'甲',f6:0,f8:0,f3:0,f124:1792543923}]}})}
+  return good(url,opts)
+ }
+ const pool=await updateHotStocks({...options,base,now:()=> '2026-10-21T00:50:00Z',fetcher:preopen})
+ expect(pool.stocks[0]).toMatchObject({amount:600000000,turnover:3,change:-1,date:'2026-10-20',eastmoneyRank:1,thsRank:2})
+ expect(pool.quoteBasis).toBe('completed-session')
+})
+it('succeeds through the same-day THS daily fallback when Eastmoney kline drops connections',async()=>{
+ const options=await paths(),good=fetcher(false)
+ const alternate=async(url,opts)=>{
+  if(url.includes('/kline/get'))throw new Error('socket closed')
+  if(url.includes('/ulist.'))return {ok:true,json:async()=>({rc:0,data:{diff:[{f12:'000001',f14:'甲',f6:0,f8:0,f3:0,f124:1792543923}]}})}
+  if(url.includes('datacenter-web'))return {ok:true,json:async()=>({success:true,result:{data:[{SECURITY_CODE:'000001',TRADE_DATE:'2026-10-20 00:00:00',SECURITY_NAME_ABBR:'甲',TURNOVERRATE:3,CHANGE_RATE:-1}]}})}
+  if(url.includes('/line/'))return {ok:true,text:async()=> 'quotebridge_v6_line_hs_000001_01_last({"data":"20261020,1,1,1,1,1,600000000,3,,,0"})'}
+  return good(url,opts)
+ }
+ const pool=await updateHotStocks({...options,base,now:()=> '2026-10-21T00:50:00Z',fetcher:alternate})
+ expect(pool.dailyFallbackCount).toBe(1)
+ expect(pool.stocks[0]).toMatchObject({amount:600000000,turnover:3,change:-1,date:'2026-10-20',eastmoneyRank:1,thsRank:2})
+})

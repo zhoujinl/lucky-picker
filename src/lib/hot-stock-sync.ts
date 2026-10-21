@@ -1,6 +1,6 @@
 import {ref} from 'vue'
 import {hotSnapshot} from './hot-stocks'
-type Snapshot=typeof hotSnapshot
+type Snapshot=typeof hotSnapshot & {quoteBasis?:string;dailyFallbackCount?:number;dailyExcludedCodes?:string[]}
 const cacheKey='lucky-picker-hot-snapshot-v1'
 function valid(value:Snapshot):boolean {
  return !!value&&Number.isFinite(Date.parse(value.fetchedAt))&&/^\d{4}-\d{2}-\d{2}$/.test(value.dataDate)&&value.sources?.eastmoney?.count===100&&value.sources?.ths?.count===100&&Array.isArray(value.stocks)&&value.stocks.length>0&&value.count===value.stocks.length&&value.stocks.every(s=>/^\d{6}$/.test(s.code)&&typeof s.name==='string'&&[s.amount,s.turnover,s.change].every(Number.isFinite))

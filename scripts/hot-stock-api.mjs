@@ -5,7 +5,7 @@ import {updateHotStocks} from './update-hot-stocks.mjs'
 async function update(){
  const dir=resolve(process.env.LUCKY_DATA_DIR||'.lucky-data')
  await mkdir(dir,{recursive:true})
- return updateHotStocks({output:resolve(dir,'hot-stock-pool.json'),statusOutput:resolve(dir,'hot-stock-status.json')})
+ return updateHotStocks({dailyCacheDir:resolve(dir,'daily'),output:resolve(dir,'hot-stock-pool.json'),statusOutput:resolve(dir,'hot-stock-status.json')})
 }
 export function createHotStockApi({update:refresh=update}={}){
  let pending

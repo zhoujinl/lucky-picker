@@ -37,6 +37,9 @@ function draw(){
   <button class="button button-primary stock-draw" :disabled="loading || !hotStocks.length" @click="draw"><AppIcon name="shuffle"/>{{loading?'正在同步热门股…':result?'再盲选一只':'揭晓一只热门股'}}<AppIcon name="arrow" :size="18"/></button>
   <p class="hot-explainer">热度代表关注，成交数据反映活跃程度；以上阈值是本工具的筛选口径，不代表上涨概率或收益预测。</p>
   <p class="hot-explainer" role="status">最近成功同步：{{updatedAt}}（北京时间）<button v-if="error && !loading" class="text-button" @click="refresh">重试同步</button></p>
+  <p v-if="hotSnapshot.quoteBasis==='completed-session'" class="hot-explainer">盘前行情已重置：热榜为本次同步，成交额、换手率及涨跌幅采用最近已完成交易日（{{hotSnapshot.dataDate}}）数据。</p>
+  <p v-if="hotSnapshot.dailyFallbackCount" class="hot-explainer">{{hotSnapshot.dailyFallbackCount}} 只候选的成交额采用同花顺日线，换手率及涨跌幅匹配东方财富同日指标。</p>
+  <p v-if="hotSnapshot.dailyExcludedCodes?.length" class="hot-explainer">{{hotSnapshot.dailyExcludedCodes.length}} 只候选缺少同日成交数据，已排除，不混用更早行情。</p>
   <div class="stock-meta"><span>行情日期：{{hotSnapshot.dataDate}} · 非实时快照</span><button class="text-button" :aria-expanded="sourceOpen" @click="sourceOpen=!sourceOpen">{{sourceOpen?'收起依据':'筛选与来源'}}<AppIcon name="chevron" :size="12"/></button></div>
   <div v-if="sourceOpen" class="source-details hot-sources">
    <p>东方财富 {{hotSnapshot.sources.eastmoney.count}} 名＋同花顺小时榜 {{hotSnapshot.sources.ths.count}} 名，合并去重共 {{hotSnapshot.candidateCount}} 个候选；与沪深股票池匹配，并按同一最新行情日期筛选，剩余 {{hotStocks.length}} 只。双榜上榜只作标记，不增加抽中权重。</p>

@@ -38,3 +38,7 @@ describe('hot stock sources and filters',()=>{
   expect(result.stocks.find(s=>s.code==='600001').change).toBe(-4)
  })
 })
+it('identifies the offending source row instead of hiding every rank issue behind one generic error',()=>{
+ expect(()=>parseEastmoneyRanks({code:0,data:[{sc:'SZ000001',rk:1},{sc:'SZ000001',rk:2}]})).toThrow('重复股票代码 000001')
+ expect(()=>parseEastmoneyRanks({code:0,data:[{sc:'SZ000001',rk:'1'}]})).toThrow('排名格式异常')
+})

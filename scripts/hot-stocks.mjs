@@ -5,7 +5,14 @@ export const THS_URL='https://eq.10jqka.com.cn/open/api/hot_list/v1/hot_stock/a/
 function ranks(rows,codeOf,rankOf) {
   if (!Array.isArray(rows)||!rows.length) throw new Error('热榜为空')
   const result=rows.map(row=>({code:codeOf(row),rank:rankOf(row)}))
-  if (result.some(r=>!/^\d{6}$/.test(r.code)||!Number.isInteger(r.rank)||r.rank<1) || new Set(result.map(r=>r.code)).size!==result.length || new Set(result.map(r=>r.rank)).size!==result.length) throw new Error('热榜代码或排名异常')
+  const codes=new Set(),positions=new Set()
+  result.forEach((r,index)=>{
+   if(!/^\d{6}$/.test(r.code))throw new Error(`热榜第 ${index+1} 条股票代码格式异常`)
+   if(!Number.isInteger(r.rank)||r.rank<1)throw new Error(`热榜 ${r.code} 排名格式异常：${JSON.stringify(r.rank)}`)
+   if(codes.has(r.code))throw new Error(`热榜重复股票代码 ${r.code}（排名 ${r.rank}）`)
+   if(positions.has(r.rank))throw new Error(`热榜重复排名 ${r.rank}（股票 ${r.code}）`)
+   codes.add(r.code);positions.add(r.rank)
+  })
   return result.filter(r=>r.rank<=100)
 }
 export function parseEastmoneyRanks(payload) {
@@ -28,7 +35,8 @@ export function buildHotPool(eastmoney,ths,quotes,base) {
   const em=new Map(eastmoney.map(r=>[r.code,r.rank])), th=new Map(ths.map(r=>[r.code,r.rank]))
   const members=new Map(base.map(s=>[s.code,s]))
   const stocks=quotes.filter(q=>union.has(q.code)&&members.has(q.code)&&!(/ST|退/i.test(q.name))&&q.amount>=MIN_AMOUNT&&q.turnover>=MIN_TURNOVER&&q.date===dataDate).map(q=>({...q,market:members.get(q.code).market,eastmoneyRank:em.get(q.code)??null,thsRank:th.get(q.code)??null})).sort((a,b)=>a.code.localeCompare(b.code))
-  if(!stocks.length||new Set(stocks.map(s=>s.code)).size!==stocks.length)throw new Error('热门池为空或包含重复股票')
+  if(!stocks.length)throw new Error(`行情日期 ${dataDate} 无股票满足成交额 ≥ 5 亿、换手率 ≥ 1% 等条件；行情可能尚未形成，请稍后重试`)
+  if(new Set(stocks.map(s=>s.code)).size!==stocks.length)throw new Error('行情接口返回重复股票，已保留上次完整股票池')
   return {dataDate,count:stocks.length,candidateCount:union.size,thresholds:{minAmount:MIN_AMOUNT,minTurnover:MIN_TURNOVER},stocks}
 }
 export function makeQuoteUrl(codes) {
