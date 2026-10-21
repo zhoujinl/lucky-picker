@@ -1,0 +1,11 @@
+import {describe,it,expect} from 'vitest'
+import {baselineDate,evaluateObservation,readObservations,saveObservations} from './stock-observations'
+describe('observations',()=>{
+ it('uses Beijing dates around opening',()=>{expect(baselineDate('2026-10-20T01:29:00Z')).toBe('2026-10-20');expect(baselineDate('2026-10-19T16:01:00Z')).toBe('2026-10-20')})
+ it('counts suspended market sessions and uses one adjusted series',()=>{const days=[{date:'2026-10-12',open:100,close:100,adjustedOpen:50,adjustedClose:50},{date:'2026-10-13',open:51,close:52,adjustedOpen:51,adjustedClose:52}];const result=evaluateObservation({addedAt:'2026-10-12T02:00:00Z'} as any,{days,sessions:['2026-10-12','2026-10-13','2026-10-14','2026-10-15']} as any);expect(result.points[1]?.change).toBeCloseTo(4);expect(result.nodes[0]?.status).toBe('missing');expect(result.progress).toBe(3)})
+ it('rejects corrupt storage and exposes write errors',()=>{expect(readObservations({getItem:()=>'{bad'} as any)).toEqual({records:[],error:expect.any(String)});expect(()=>saveObservations([],{setItem:()=>{throw Error('quota')}} as any)).toThrow()})
+})
+describe('checkpoint finality',()=>{
+ it('waits for calendar rather than counting individual quote rows',()=>{const snapshot={days:[{date:'2026-10-12',open:100,close:100,adjustedOpen:100,adjustedClose:100}],sessions:['2026-10-12']};const r=evaluateObservation({addedAt:'2026-10-10T02:00:00Z'} as any,snapshot as any);expect(r.base?.date).toBe('2026-10-12');expect(r.progress).toBe(0);expect(r.completed).toBe(false);expect(r.nodes.every(n=>n.status==='pending')).toBe(true)})
+ it('uses first valid open after suspension and supports ten-session completion',()=>{const sessions=['2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07','2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'];const snapshot={days:[{date:'2026-10-02',open:100,close:101,adjustedOpen:50,adjustedClose:51}],sessions};const r=evaluateObservation({addedAt:'2026-10-01T02:00:00Z'} as any,snapshot as any);expect(r.base?.date).toBe('2026-10-02');expect(r.nodes[1]?.date).toBe('2026-10-12');expect(r.nodes[1]?.status).toBe('missing');expect(r.completed).toBe(true)})
+})

@@ -1,0 +1,12 @@
+import {describe,it,expect} from 'vitest'
+import {parseObservationDaily,createStockObservationApi} from './stock-observation-api.mjs'
+describe('observation source validation',()=>{
+ it('rejects mismatched identity and bad prices',()=>{expect(()=>parseObservationDaily({code:0,data:{}},'sh600519','day')).toThrow();expect(()=>parseObservationDaily({code:0,data:{sh600519:{day:[['2026-10-20','0','1']],qt:{sh600519:['','','600519']}}}},'sh600519','day')).toThrow()})
+ it('exports middleware',()=>expect(typeof createStockObservationApi()).toBe('function'))
+})
+describe('observation middleware',()=>{
+ const invoke=async(api,url='/api/stock-observations/quote?code=600519&from=2026-10-12')=>{const res={statusCode:200,setHeader(){},end(body){this.body=JSON.parse(body)}};await api({method:'GET',url},res,()=>{});return res}
+ it('coalesces and caches snapshots and excludes intraday close',async()=>{let calls=0;const fetch=async url=>{calls++;const [symbol,,,,,adjustment]=new URL(url).searchParams.get('param').split(',');return {ok:true,json:async()=>({code:0,data:{[symbol]:{qt:{[symbol]:['','',symbol.slice(2)]},[adjustment==='qfq'?'qfqday':'day']:[['2026-10-12','100','101'],['2026-10-21','102','103']]}}})}};const api=createStockObservationApi({fetch,now:()=>new Date('2026-10-21T04:00:00Z')});const [a,b]=await Promise.all([invoke(api),invoke(api)]);expect(calls).toBe(3);expect(a.body).toEqual(b.body);expect(a.body.days).toHaveLength(1);await invoke(api);expect(calls).toBe(3)})
+ it('returns explicit errors for network and malformed requests',async()=>{const api=createStockObservationApi({fetch:async()=>{throw Error('offline')}});expect((await invoke(api)).body.error).toBe('offline');expect((await invoke(api,'/api/stock-observations/quote?code=x&from=2026-02-30')).statusCode).toBe(400)})
+})
+it('returns pending empty snapshot when only current day is available',async()=>{const api=createStockObservationApi({now:()=>new Date('2026-10-21T04:00:00Z'),fetch:async url=>{const [symbol,,,,,a]=new URL(url).searchParams.get('param').split(',');return {ok:true,json:async()=>({code:0,data:{[symbol]:{qt:{[symbol]:['','',symbol.slice(2)]},[a==='qfq'?'qfqday':'day']:[['2026-10-21','100','101']]}}})}}});let result;await api({method:'GET',url:'/api/stock-observations/quote?code=600519&from=2026-10-21'},{setHeader(){},end(body){result=JSON.parse(body)}},()=>{});expect(result.error).toBeUndefined();expect(result.days).toEqual([]);expect(result.sessions).toEqual([]);expect(result.calendarThrough).toBe('')})
