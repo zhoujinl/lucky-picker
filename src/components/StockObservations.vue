@@ -4,10 +4,10 @@ import {readObservations,saveObservations,evaluateObservation,fetchObservation,b
 import './stock-observations.css'
 const props=defineProps<{active:boolean}>()
 const emit=defineEmits<{notice:[message:string];change:[count:number]}>()
-const initial=readObservations(),records=ref(initial.records),storageError=ref(initial.error),filter=ref('all'),busy=ref(false),selected=ref<string|null>(null)
+const initial=readObservations(),readFailed=Boolean(initial.error),records=ref(initial.records),storageError=ref(initial.error),filter=ref('all'),busy=ref(false),selected=ref<string|null>(null)
 const evaluations=computed(()=>records.value.map(record=>({record,result:evaluateObservation(record)})))
 const visible=computed(()=>evaluations.value.filter(({result})=>filter.value==='all'||(filter.value==='done'?result.completed:!result.completed)))
-function persist(){try{saveObservations(records.value);storageError.value=''}catch{storageError.value='本次观察变更无法持久保存；关闭页面后可能丢失。';emit('notice',storageError.value)}emit('change',records.value.filter(r=>!evaluateObservation(r).completed).length)}
+function persist(){try{saveObservations(records.value,undefined,readFailed);storageError.value=''}catch{storageError.value=readFailed?'原始观察存储读取失败，已阻止覆盖；本次变更仅保存在当前页面。请恢复浏览器存储后重新打开页面。':'本次观察变更无法持久保存；关闭页面后可能丢失。';emit('notice',storageError.value)}emit('change',records.value.filter(r=>!evaluateObservation(r).completed).length)}
 function hasActive(code:string){return records.value.some(r=>r.code===code&&!evaluateObservation(r).completed)}
 function addStock(stock:{code:string;name:string;market:string},source:'all'|'hot') {if(hasActive(stock.code)){emit('notice','该股票已在观察中');return}if(!/^\d{6}$/.test(stock.code)){emit('notice','股票代码无效');return}records.value.unshift({...stock,source,id:crypto.randomUUID(),addedAt:new Date().toISOString()});persist();emit('notice','已加入股票观察');if(props.active)void refresh()}
 function remove(record:StockObservation){if(!window.confirm(`移除 ${record.name} 的这次观察？`))return;records.value=records.value.filter(r=>r.id!==record.id);persist()}
