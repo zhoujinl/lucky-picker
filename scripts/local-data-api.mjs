@@ -24,6 +24,7 @@ function validate(key,value){
  const ids=new Set()
  for(const r of rows){
   if(!r||typeof r!=='object')throw Error('记录格式无效')
+  if(key!==H&&r.note!==undefined&&(typeof r.note!=='string'||r.note.length>300))throw Error('备注必须是文字且最多 300 字')
   const id=key===L?r.key:r.id
   if(!str(id,2000)||ids.has(id))throw Error('记录标识缺失或重复');ids.add(id)
   if(key===H){if(!date(r.createdAt)||!str(r.label)||!Array.isArray(r.lines)||!r.lines.length||r.lines.length>100||!r.lines.every(x=>str(x,10000)))throw Error('历史记录无效')}

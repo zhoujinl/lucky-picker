@@ -1,8 +1,9 @@
+import {normalizeObservationNote,validObservationNote} from './observation-note'
 import { lotteries, isPositional, type LotteryId, type Ticket } from './picker'
 export interface OfficialIssue { id:LotteryId; issue:string; cutoff:string; drawTime:string; source:string; confirmed:true }
 export interface OfficialDraw extends Ticket { id:LotteryId; issue:string; drawTime:string; source:string; updatedAt:string; specialRegime?:boolean }
 export interface Evaluation { status:'won'|'lost'|'unsupported'; tier?:number; label:string; primaryHits:number[]; secondaryHits:number[]; ruleVersion:string }
-export interface LotteryObservation { key:string; id:LotteryId; issue:string; ticket:Ticket; cutoff:string; drawTime:string; source:string; addedAt:string; issueVerification?:'unverified'|'verified'; result?:OfficialDraw; error?:string }
+export interface LotteryObservation { key:string; note?:string; id:LotteryId; issue:string; ticket:Ticket; cutoff:string; drawTime:string; source:string; addedAt:string; issueVerification?:'unverified'|'verified'; result?:OfficialDraw; error?:string }
 export const LOTTERY_STORAGE_KEY='lucky-picker:lottery-observations:v1'
 export function validateTicket(id:LotteryId,t:Ticket,result=false):void {
  const l=lotteries.find(x=>x.id===id);if(!l||!t||!Array.isArray(t.primary)||!Array.isArray(t.secondary))throw Error('号码结构无效')
@@ -30,16 +31,18 @@ export function evaluate(id:LotteryId,t:Ticket,d:OfficialDraw):Evaluation {
  const name=id==='pl3'?'直选奖':id==='fc3d'?'单选奖':id==='pl5'?'一等奖':`${['','一','二','三','四','五','六','七'][tier]}等奖`
  return {...base,status:tier?'won':'lost',tier,label:tier?name:'未命中'}
 }
-export function addObservations(rows:LotteryObservation[],issue:OfficialIssue,tickets:Ticket[],now=Date.now()):LotteryObservation[]{
+export function addObservations(rows:LotteryObservation[],issue:OfficialIssue,tickets:Ticket[],now=Date.now(),note=''):LotteryObservation[]{
+ const normalizedNote=normalizeObservationNote(note)
  if(issue.confirmed!==true||!/^\d{5,7}$/.test(issue.issue)||!Number.isFinite(Date.parse(issue.cutoff))||Date.parse(issue.cutoff)<=now||!Number.isFinite(Date.parse(issue.drawTime))||Date.parse(issue.drawTime)<Date.parse(issue.cutoff)||!/^https:\/\//.test(issue.source))throw Error('无法确认官方期号或已停止销售，请刷新期次')
  if(tickets.length<1||tickets.length>10)throw Error('每次仅支持 1 至 10 组')
- const next=[...rows];for(const t of tickets){validateTicket(issue.id,t);const ticket={primary:[...t.primary],secondary:[...t.secondary]};if(!isPositional(issue.id)){ticket.primary.sort((a,b)=>a-b);ticket.secondary.sort((a,b)=>a-b)}const key=`${issue.id}:${issue.issue}:${JSON.stringify(ticket)}`;if(!next.some(r=>r.key===key))next.push({key,id:issue.id,issue:issue.issue,ticket,cutoff:issue.cutoff,drawTime:issue.drawTime,source:issue.source,addedAt:new Date(now).toISOString()})}if(next.length>1000)throw Error('最多保存 1000 组观察');return next
+ const next=[...rows];for(const t of tickets){validateTicket(issue.id,t);const ticket={primary:[...t.primary],secondary:[...t.secondary]};if(!isPositional(issue.id)){ticket.primary.sort((a,b)=>a-b);ticket.secondary.sort((a,b)=>a-b)}const key=`${issue.id}:${issue.issue}:${JSON.stringify(ticket)}`;if(!next.some(r=>r.key===key))next.push({key,note:normalizedNote,id:issue.id,issue:issue.issue,ticket,cutoff:issue.cutoff,drawTime:issue.drawTime,source:issue.source,addedAt:new Date(now).toISOString()})}if(next.length>1000)throw Error('最多保存 1000 组观察');return next
 }
-export function loadObservations(storage:Pick<Storage,'getItem'>):LotteryObservation[]{const raw=storage.getItem(LOTTERY_STORAGE_KEY);if(!raw)return [];try{const value=JSON.parse(raw);if(value.version!==1||!Array.isArray(value.rows)||value.rows.length>1000)throw Error();for(const r of value.rows){validateTicket(r.id,r.ticket);if(typeof r.key!=='string'||!/^\d{5,7}$/.test(r.issue)||!Number.isFinite(Date.parse(r.addedAt)))throw Error();if(r.result)validateDraw(r.id,r.issue,r.result)}return value.rows}catch{throw Error('彩票观察存储损坏，请先备份浏览器数据；未覆盖原记录')}}
+export function loadObservations(storage:Pick<Storage,'getItem'>):LotteryObservation[]{const raw=storage.getItem(LOTTERY_STORAGE_KEY);if(!raw)return [];try{const value=JSON.parse(raw);if(value.version!==1||!Array.isArray(value.rows)||value.rows.length>1000)throw Error();for(const r of value.rows){validateTicket(r.id,r.ticket);if(!validObservationNote(r.note)||typeof r.key!=='string'||!/^\d{5,7}$/.test(r.issue)||!Number.isFinite(Date.parse(r.addedAt)))throw Error();if(r.result)validateDraw(r.id,r.issue,r.result)}return value.rows}catch{throw Error('彩票观察存储损坏，请先备份浏览器数据；未覆盖原记录')}}
 export function saveObservations(storage:Pick<Storage,'setItem'>,rows:LotteryObservation[]):void{try{storage.setItem(LOTTERY_STORAGE_KEY,JSON.stringify({version:1,rows}))}catch{throw Error('彩票观察保存失败，请检查浏览器存储空间或权限')}}
 export function observationStatus(r:LotteryObservation,now=Date.now()):Evaluation['status']|'pending'|'checking'{return r.result?evaluate(r.id,r.ticket,r.result).status:Date.parse(r.drawTime)>now?'pending':'checking'}
 
-export function addUnverifiedObservations(rows:LotteryObservation[],id:LotteryId,issue:string,tickets:Ticket[],now=Date.now()):LotteryObservation[]{
+export function addUnverifiedObservations(rows:LotteryObservation[],id:LotteryId,issue:string,tickets:Ticket[],now=Date.now(),note=''):LotteryObservation[]{
+ const normalizedNote=normalizeObservationNote(note)
  if(!/^\d{5,7}$/.test(issue)||tickets.length<1||tickets.length>10)throw Error('请填写官方公告或票面上的原始数字期号（5 至 7 位）')
- const next=[...rows];for(const t of tickets){validateTicket(id,t);const ticket={primary:[...t.primary],secondary:[...t.secondary]};if(!isPositional(id)){ticket.primary.sort((a,b)=>a-b);ticket.secondary.sort((a,b)=>a-b)}const key=`${id}:${issue}:${JSON.stringify(ticket)}`;if(!next.some(r=>r.key===key))next.push({key,id,issue,ticket,cutoff:'',drawTime:'',source:lotteries.find(l=>l.id===id)!.scheduleUrl,addedAt:new Date(now).toISOString(),issueVerification:'unverified'})}if(next.length>1000)throw Error('最多保存 1000 组观察');return next
+ const next=[...rows];for(const t of tickets){validateTicket(id,t);const ticket={primary:[...t.primary],secondary:[...t.secondary]};if(!isPositional(id)){ticket.primary.sort((a,b)=>a-b);ticket.secondary.sort((a,b)=>a-b)}const key=`${id}:${issue}:${JSON.stringify(ticket)}`;if(!next.some(r=>r.key===key))next.push({key,note:normalizedNote,id,issue,ticket,cutoff:'',drawTime:'',source:lotteries.find(l=>l.id===id)!.scheduleUrl,addedAt:new Date(now).toISOString(),issueVerification:'unverified'})}if(next.length>1000)throw Error('最多保存 1000 组观察');return next
 }

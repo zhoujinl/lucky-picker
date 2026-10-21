@@ -23,7 +23,10 @@ const stockObservations=ref<InstanceType<typeof StockObservations>|null>(null)
 const lotteryObservations=ref<InstanceType<typeof LotteryObservations>|null>(null)
 const stockObservationCount=ref(0)
 const lotteryObservationCount=ref(0)
-function observeStock(value:Stock,source:'all'|'hot'){stockObservations.value?.addStock(value,source);stockMode.value='watch'}
+const stockObserveDialog=ref<HTMLDialogElement|null>(null),pendingStock=ref<{stock:Stock;source:'all'|'hot'}|null>(null),stockNote=ref(''),savingStock=ref(false),stockObserveError=ref('')
+function observeStock(value:Stock,source:'all'|'hot'){pendingStock.value={stock:{...value},source};stockNote.value='';stockObserveError.value='';stockObserveDialog.value?.showModal()}
+async function confirmStockObservation(){if(savingStock.value||!pendingStock.value||!stockObservations.value)return;savingStock.value=true;try{await stockObservations.value.addStock(pendingStock.value.stock,pendingStock.value.source,stockNote.value);stockObserveDialog.value?.close();stockMode.value='watch'}catch(e){stockObserveError.value=(e as Error).message}finally{savingStock.value=false}}
+
 function isStockObserved(code:string){return stockObservations.value?.hasActive(code)??false}
 function observeTickets(values:Ticket[]){lotteryObservations.value?.open(selected.value,values)}
 const history=ref<HistoryEntry[]>(readHistory(localDatabase.storage))
@@ -127,6 +130,7 @@ async function clearHistory(){try{await updateHistory(()=>[]);clearDialog.value?
     </main>
     <footer class="site-footer"><div class="footer-brand"><AppIcon name="sparkle" :size="16"/>lucky picker<span>让选择，轻松一点。</span></div><p>随机选号不提高中奖概率 · 随机选股仅供娱乐</p><span class="footer-end">MADE FOR LITTLE POSSIBILITIES</span></footer>
     <div class="toast" :class="{visible:notice}" role="status" aria-live="polite"><AppIcon name="info" :size="17"/>{{notice}}</div>
+    <dialog ref="stockObserveDialog" class="confirm-dialog stock-observe-dialog" aria-labelledby="stock-observe-title" @cancel="savingStock&&$event.preventDefault()" @click="($event.target===$event.currentTarget)&&!savingStock&&stockObserveDialog?.close()"><form @submit.prevent="confirmStockObservation"><div class="stock-observe-title"><h2 id="stock-observe-title">加入股票观察</h2><button type="button" aria-label="关闭" :disabled="savingStock" @click="stockObserveDialog?.close()">×</button></div><p class="stock-observe-preview">{{pendingStock?.stock.name}} <span>{{pendingStock?.stock.code}} · {{pendingStock?.stock.market}}</span></p><label for="stock-observation-note">备注 <span class="note-optional">选填 · {{stockNote.length}}/300</span></label><textarea id="stock-observation-note" v-model="stockNote" maxlength="300" rows="3" autofocus :disabled="savingStock" placeholder="例如：朋友提到的公司，观察三天后的表现"></textarea><p class="stock-observe-hint">保存后可在观察列表查看备注，以及第 3、10 个交易日的走势。</p><p v-if="stockObserveError" role="alert">{{stockObserveError}}</p><div class="dialog-actions"><button type="button" class="button button-secondary" :disabled="savingStock" @click="stockObserveDialog?.close()">取消</button><button type="submit" class="button button-primary" :disabled="savingStock">{{savingStock?'正在保存…':'加入观察'}}</button></div></form></dialog>
     <dialog ref="clearDialog" aria-labelledby="clear-title" class="confirm-dialog" @click="($event.target===$event.currentTarget) && clearDialog?.close()"><section><h2 id="clear-title">清空最近记录？</h2><p>将移除本机数据库中的全部生成记录，观察列表不受影响。</p><div class="dialog-actions"><button class="button button-secondary" autofocus @click="clearDialog?.close()">取消</button><button class="button button-primary" @click="clearHistory">确认清空</button></div></section></dialog>
   </div>
 </template>

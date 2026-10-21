@@ -2,6 +2,7 @@
 import {computed,ref,watch} from 'vue'
 import {readObservations,saveObservations,evaluateObservation,fetchObservation,baselineDate,type StockObservation} from '../lib/stock-observations'
 import './stock-observations.css'
+import {normalizeObservationNote} from '../lib/observation-note'
 import {localDatabase} from '../lib/local-database'
 const props=defineProps<{active:boolean}>()
 const emit=defineEmits<{notice:[message:string];change:[count:number]}>()
@@ -15,8 +16,8 @@ function persist(change:(rows:StockObservation[])=>StockObservation[]){
 }
 function report(e:unknown){storageError.value=(e as Error).message;emit('notice','股票观察保存失败：'+storageError.value)}
 function hasActive(code:string){return records.value.some(r=>r.code===code&&!evaluateObservation(r).completed)}
-async function addStock(stock:{code:string;name:string;market:string},source:'all'|'hot') {
- try{if(!/^\d{6}$/.test(stock.code))throw Error('股票代码无效');await persist(rows=>{if(rows.some(r=>r.code===stock.code&&!evaluateObservation(r).completed))throw Error('该股票已在观察中');return [{...stock,source,id:crypto.randomUUID(),addedAt:new Date().toISOString()},...rows]});emit('notice','已加入股票观察');if(props.active)void refresh()}catch(e){report(e)}
+async function addStock(stock:{code:string;name:string;market:string},source:'all'|'hot',note='') {
+ try{const normalizedNote=normalizeObservationNote(note);if(!/^\d{6}$/.test(stock.code))throw Error('股票代码无效');await persist(rows=>{if(rows.some(r=>r.code===stock.code&&!evaluateObservation(r).completed))throw Error('该股票已在观察中');return [{...stock,note:normalizedNote,source,id:crypto.randomUUID(),addedAt:new Date().toISOString()},...rows]});emit('notice','已加入股票观察');if(props.active)void refresh()}catch(e){report(e);throw e}
 }
 async function remove(record:StockObservation){if(!window.confirm(`移除 ${record.name} 的这次观察？`))return;try{await persist(rows=>rows.filter(r=>r.id!==record.id))}catch(e){report(e)}}
 async function refresh(){if(busy.value||readFailed)return;busy.value=true;try{for(const record of [...records.value]){let patch:Partial<StockObservation>;try{patch={snapshot:await fetchObservation(record),error:undefined}}catch(e){patch={error:e instanceof Error?e.message:'行情更新失败'}}try{await persist(rows=>rows.map(r=>r.id===record.id?{...r,...patch}:r))}catch(e){report(e);break}}}finally{busy.value=false}}
@@ -37,6 +38,7 @@ defineExpose({addStock,hasActive})
  <article v-for="{record,result} in visible" :key="record.id" class="stock-observation-card">
   <div class="stock-observation-heading"><h3>{{record.name}} <small>{{record.code}} · {{record.market}}</small></h3><span>{{result.completed?'已完成':'观察中'}}</span></div>
   <p class="stock-observation-note">{{record.source==='hot'?'热门股盲选':'全市场随机'}} · 加入于 {{new Date(record.addedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false})}}</p>
+  <p v-if="record.note" class="observation-memo"><span>备注</span>{{record.note}}</p>
   <p v-if="record.error" role="alert" class="stock-observation-warning">{{record.error}}。{{record.snapshot?'保留上次完整快照。':'尚无行情，等待更新。'}}</p>
   <p v-if="!result.base">等待 {{baselineDate(record.addedAt)}} 或之后首个有效交易日的已确认开盘行情；若已开盘，等待当日收盘行情核实。</p>
   <template v-else>

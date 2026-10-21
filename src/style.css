@@ -46,3 +46,13 @@
  .hero-art{top:0;right:0;width:150px;height:150px;transform:scale(.6);opacity:.65}
  .hero-copy>p{max-width:235px;line-height:1.7}.mode-tabs{margin-bottom:16px}
 }
+
+.observation-memo{display:flex;align-items:baseline;gap:9px;white-space:pre-wrap;overflow-wrap:anywhere;padding:11px 13px;border-radius:8px;background:#f4f3eb;color:#595b4e!important;font-size:13px!important;line-height:1.7}
+.observation-memo>span{flex-shrink:0;color:#949580;font-size:11px;white-space:nowrap}
+.note-optional{float:right;font-size:11px;color:#909184;font-weight:400}
+.stock-observe-dialog{width:min(460px,calc(100vw - 32px));max-height:90dvh;overflow:auto;text-align:left}
+.stock-observe-title{display:flex;justify-content:space-between;align-items:center;gap:16px}.stock-observe-title h2{margin:0}.stock-observe-title button{background:transparent;font-size:23px;color:#929486;padding:2px 7px}
+.stock-observe-preview{background:#f4f2e9;border-radius:9px;padding:13px 15px;margin:18px 0;font-size:15px}.stock-observe-preview>span{display:block;font-size:12px;color:#8a8c7e;margin-top:5px}
+.stock-observe-dialog label{display:block;margin:16px 0 8px;font-size:13px}
+.stock-observe-dialog textarea,.lottery-observation-dialog textarea{display:block;width:100%;resize:vertical;min-height:84px;max-height:220px;font:inherit;font-size:13px;line-height:1.7;padding:11px 12px;border:1px solid #d6d5cd;background:#fffefa;border-radius:8px;color:#42463b}
+.stock-observe-dialog .stock-observe-hint{font-size:12px;line-height:1.7;color:#909184;margin:12px 0 20px}

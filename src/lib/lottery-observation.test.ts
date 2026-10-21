@@ -20,3 +20,17 @@ import { addUnverifiedObservations } from './lottery-observation'
 it('allows explicit manual issue without inventing cutoff or draw time',()=>{const rows=addUnverifiedObservations([],'pl3','26001',[{primary:[0,0,1],secondary:[]}]);expect(rows[0]?.issueVerification).toBe('unverified');expect(rows[0]?.drawTime).toBe('');expect(rows[0]?.cutoff).toBe('');expect(()=>addUnverifiedObservations([],'pl3','next',[])).toThrow()})
 it('checks the verified ssq special prize only with explicit regime data',()=>{const t={primary:[1,2,3,31,32,33],secondary:[16]};expect(evaluate('ssq',t,draw('ssq',[1,2,3,4,5,6],[1],{specialRegime:true})).label).toBe('福运奖');expect(evaluate('ssq',t,draw('ssq',[1,2,3,4,5,6],[1],{specialRegime:false})).status).toBe('lost')})
 it('keeps positional permutations separate and normalizes combination order for deduplication',()=>{expect(addUnverifiedObservations([],'pl3','26001',[{primary:[0,0,1],secondary:[]},{primary:[1,0,0],secondary:[]}])).toHaveLength(2);expect(addUnverifiedObservations([],'ssq','2026001',[{primary:[1,2,3,4,5,6],secondary:[1]},{primary:[6,5,4,3,2,1],secondary:[1]}])).toHaveLength(1)})
+
+it('keeps a batch note through saving and loading, without replacing a duplicate note',()=>{
+ const now=Date.parse('2026-10-21T01:00:00Z'),tickets=[{primary:[0,0,1],secondary:[]},{primary:[1,0,0],secondary:[]}]
+ const rows=addUnverifiedObservations([],'pl3','26280',tickets,now,'  生日号\n观察这一期  ')
+ expect(rows.map(r=>r.note)).toEqual(['生日号\n观察这一期','生日号\n观察这一期'])
+ let raw='';saveObservations({setItem:(_key,value)=>{raw=value}},rows)
+ expect(loadObservations({getItem:()=>raw})[0]?.note).toBe('生日号\n观察这一期')
+ expect(addUnverifiedObservations(rows,'pl3','26280',tickets,now,'新备注')[0]?.note).toBe('生日号\n观察这一期')
+ expect(()=>addUnverifiedObservations([],'pl3','26280',tickets,now,'字'.repeat(301))).toThrow(/300/)
+})
+it('also attaches notes to officially confirmed issues',()=>{
+ const now=Date.parse('2026-10-21T01:00:00Z'),issue={id:'pl3' as const,issue:'26280',cutoff:'2026-10-21T12:00:00Z',drawTime:'2026-10-21T13:25:00Z',source:'https://www.lottery.gov.cn/',confirmed:true as const}
+ expect(addObservations([],issue,[{primary:[0,1,2],secondary:[]}],now,'自己的组合')[0]?.note).toBe('自己的组合')
+})

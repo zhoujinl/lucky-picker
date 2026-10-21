@@ -14,3 +14,11 @@ describe('storage and temporal regression protection',()=>{
  it('blocks ordinary persistence after unreadable storage',()=>{let writes=0;const original='{unreadable original observations';let stored=original;const storage={getItem(){return stored},setItem(_key:string,value:string){writes++;stored=value}};const initial=readObservations(storage);expect(initial.error).toBeTruthy();expect(()=>saveObservations([{id:'new',code:'600519',name:'test',market:'沪市',source:'all',addedAt:'2026-10-21T02:00:00Z'}],storage,Boolean(initial.error))).toThrow('仅保存在当前页面');expect(writes).toBe(0);expect(stored).toBe(original)})
  it('rejects future sessions, mismatched calendarThrough and quotes outside sessions',()=>{const now=new Date('2026-10-21T04:00:00Z');const snapshot={code:'600519',from:'2026-10-19',updatedAt:now.toISOString(),source:'test',calendarThrough:'2026-10-20',sessions:['2026-10-19','2026-10-20'],days:[{date:'2026-10-19',open:100,close:101,adjustedOpen:50,adjustedClose:51}]};expect(validateSnapshot(snapshot,'600519',now)).toBe(true);expect(validateSnapshot({...snapshot,sessions:[...snapshot.sessions,'2026-10-22'],calendarThrough:'2026-10-22'},'600519',now)).toBe(false);expect(validateSnapshot({...snapshot,calendarThrough:'2026-10-19'},'600519',now)).toBe(false);expect(validateSnapshot({...snapshot,days:[{...snapshot.days[0],date:'2026-10-18'}]},'600519',now)).toBe(false);expect(validateSnapshot({...snapshot,updatedAt:'2026-10-22T04:00:00Z'},'600519',now)).toBe(false)})
 })
+
+it('loads old stock records and roundtrips notes, rejecting invalid note payloads',()=>{
+ const record={id:'note',code:'000001',name:'平安银行',market:'深市主板',source:'all' as const,addedAt:'2026-10-21T01:00:00Z'}
+ let raw='';const storage={setItem:(_key:string,value:string)=>{raw=value},getItem:()=>raw}
+ saveObservations([record],storage);expect(readObservations(storage).error).toBe('')
+ saveObservations([{...record,note:'银行方向\n观察量价变化'}],storage);expect(readObservations(storage).records[0]?.note).toBe('银行方向\n观察量价变化')
+ for(const note of [42,'字'.repeat(301)]){raw=JSON.stringify({version:1,records:[{...record,note}]});expect(readObservations(storage).error).toBeTruthy()}
+})
