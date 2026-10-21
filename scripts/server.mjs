@@ -2,7 +2,10 @@ import {createServer} from 'node:http'
 import {readFile} from 'node:fs/promises'
 import {resolve,extname,sep} from 'node:path'
 import {createHotStockApi} from './hot-stock-api.mjs'
-const root=resolve('dist'),api=createHotStockApi()
+import {createStockObservationApi} from './stock-observation-api.mjs'
+import {createLotteryObservationApi} from './lottery-observation-api.mjs'
+const root=resolve('dist'),hotApi=createHotStockApi(),stockApi=createStockObservationApi(),lotteryApi=createLotteryObservationApi()
+const api=(req,res,next)=>hotApi(req,res,()=>stockApi(req,res,()=>lotteryApi.middleware(req,res,next)))
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'}
 const server=createServer((req,res)=>{
  void api(req,res,async()=>{

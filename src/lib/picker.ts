@@ -14,7 +14,7 @@ export const lotteries: Lottery[] = [
     ruleUrl:'https://www.scflcp.com.cn/yxgz/823145252.jhtml', scheduleUrl:'https://mzj.sz.gov.cn/szmz/pc/bmxx/mzfwzy/flcp/bmxx/content/post_2929813.html' },
   { id:'dlt', name:'超级大乐透', issuer:'中国体育彩票', mode:'combination', description:'前区 01–35 选 5 个，后区 01–12 选 2 个', primaryCount:5, primaryMax:35, secondaryCount:2, secondaryMax:12,
     drawSchedule:'每周一、三、六 21:25', drawRule:'前区摇出 5 个号码，后区摇出 2 个号码；各区号码不计顺序，前后区全部命中为一等奖，其余按命中组合判奖。',
-    ruleUrl:'https://www.gstc.org.cn/newsDetail/030600/030601', scheduleUrl:sportsSchedule },
+    ruleUrl:'https://www.gstc.org.cn/newsDetail/010600/77722', scheduleUrl:sportsSchedule },
   { id:'pl3', name:'排列三', issuer:'中国体育彩票', mode:'positional', description:'按百、十、个位随机生成，数字 0–9，可重复', primaryCount:3, primaryMax:9, secondaryCount:0, secondaryMax:0,
     drawSchedule:'每日 21:25', drawRule:'按顺序摇出 3 位 0–9 数字，可出现重复数字。这里生成直选号码，三位数字及位置全部对应才中直选奖；组选另按官方玩法判奖。',
     ruleUrl:'https://www.sport.gov.cn/cpzx/n5649/c663326/content.html', scheduleUrl:sportsSchedule },

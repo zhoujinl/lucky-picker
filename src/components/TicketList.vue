@@ -2,7 +2,7 @@
 import {formatBall,isPositional,formatTicket,type LotteryId,type Ticket} from '../lib/picker'
 import AppIcon from './AppIcon.vue'
 defineProps<{tickets:Ticket[];lotteryId:LotteryId}>()
-defineEmits<{copy:[text:string];replace:[index:number]}>()
+defineEmits<{copy:[text:string];replace:[index:number];observe:[index:number]}>()
 </script>
 <template>
   <div class="ticket-list">
@@ -14,6 +14,7 @@ defineEmits<{copy:[text:string];replace:[index:number]}>()
         <span v-for="(n,i) in ticket.secondary" :key="`s${i}`" class="ball ball-blue">{{formatBall(lotteryId,n)}}</span>
       </div>
       <div class="row-actions">
+        <button class="text-button observe-ticket" :aria-label="`观察第 ${index+1} 组号码`" @click="$emit('observe',index)">＋ 加入观察</button>
         <button class="icon-button" :aria-label="`重新生成第 ${index+1} 组`" title="重新生成这一组" @click="$emit('replace',index)"><AppIcon name="refresh" :size="17"/></button>
         <button class="icon-button" :aria-label="`复制第 ${index+1} 组`" title="复制这一组" @click="$emit('copy',formatTicket(lotteryId,ticket))"><AppIcon name="copy" :size="17"/></button>
       </div>

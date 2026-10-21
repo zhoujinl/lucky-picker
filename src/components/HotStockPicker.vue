@@ -3,10 +3,10 @@ import {computed,ref,watch} from 'vue'
 import AppIcon from './AppIcon.vue'
 import {pickHotStock,formatHotStock,type HotStock} from '../lib/hot-stocks'
 import {hotStockSync} from '../lib/hot-stock-sync'
-const props=defineProps<{active:boolean}>()
+const props=defineProps<{active:boolean;isObserved?:(code:string)=>boolean}>()
 const {snapshot:hotSnapshot,loading,error,refresh}=hotStockSync
 const hotStocks=computed(()=>hotSnapshot.value.stocks)
-const emit=defineEmits<{copy:[text:string];picked:[lines:string[]];notice:[message:string]}>()
+const emit=defineEmits<{copy:[text:string];picked:[lines:string[]];notice:[message:string];observe:[stock:HotStock]}>()
 const result=ref<HotStock|null>(null)
 const sourceOpen=ref(false)
 watch(()=>props.active,active=>{if(active){result.value=null;void refresh()}},{immediate:true})
@@ -33,6 +33,7 @@ function draw(){
    <div class="hot-ranks"><div><span>东方财富人气榜</span><strong>{{result.eastmoneyRank?'#'+result.eastmoneyRank:'未进前100'}}</strong></div><div><span>同花顺小时热榜</span><strong>{{result.thsRank?'#'+result.thsRank:'未进前100'}}</strong></div></div>
    <dl class="hot-metrics"><div><dt>成交额</dt><dd>{{(result.amount/1e8).toFixed(2)}}<small> 亿</small></dd></div><div><dt>换手率</dt><dd>{{result.turnover.toFixed(2)}}<small>%</small></dd></div><div><dt>当日涨跌幅</dt><dd>{{result.change>0?'+':''}}{{result.change.toFixed(2)}}<small>%</small></dd></div></dl>
    <button class="text-button" @click="emit('copy',formatHotStock(result))"><AppIcon name="copy" :size="15"/>复制股票与入选依据</button>
+   <div class="stock-observe-action"><button class="button button-secondary" :disabled="props.isObserved?.(result.code)" @click="emit('observe',result)">{{props.isObserved?.(result.code)?'已加入观察':'＋ 加入观察'}}</button></div>
   </div>
   <button class="button button-primary stock-draw" :disabled="loading || !hotStocks.length" @click="draw"><AppIcon name="shuffle"/>{{loading?'正在同步热门股…':result?'再盲选一只':'揭晓一只热门股'}}<AppIcon name="arrow" :size="18"/></button>
   <p class="hot-explainer">热度代表关注，成交数据反映活跃程度；以上阈值是本工具的筛选口径，不代表上涨概率或收益预测。</p>
