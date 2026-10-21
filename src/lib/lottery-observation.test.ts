@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest'
-import { evaluate, validateDraw, addObservations, loadObservations, saveObservations } from './lottery-observation'
+import { sortObservationsNewestFirst, evaluate, validateDraw, addObservations, loadObservations, saveObservations } from './lottery-observation'
 const draw=(id:any, primary:number[],secondary:number[]=[],extra={})=>({id,issue:id==='dlt'?'26014':'2026001',primary,secondary,drawTime:'2026-02-02T21:15:00+08:00',source:'https://www.cwl.gov.cn/',updatedAt:'2026-02-03T00:00:00Z',...extra})
 const comb=(n:number,max:number,h:number)=>[...Array.from({length:h},(_,i)=>i+1),...Array.from({length:n-h},(_,i)=>max-i)]
 describe('verified base prize tiers',()=>{
@@ -33,4 +33,17 @@ it('keeps a batch note through saving and loading, without replacing a duplicate
 it('also attaches notes to officially confirmed issues',()=>{
  const now=Date.parse('2026-10-21T01:00:00Z'),issue={id:'pl3' as const,issue:'26280',cutoff:'2026-10-21T12:00:00Z',drawTime:'2026-10-21T13:25:00Z',source:'https://www.lottery.gov.cn/',confirmed:true as const}
  expect(addObservations([],issue,[{primary:[0,1,2],secondary:[]}],now,'自己的组合')[0]?.note).toBe('自己的组合')
+})
+
+
+it('shows new and existing lottery observations newest first while preserving batch order',()=>{
+ const ticket=(n:number)=>({primary:[0,0,n],secondary:[]})
+ const older=addUnverifiedObservations([],'pl3','26280',[ticket(1)],Date.parse('2026-10-20T01:00:00Z'))
+ const stored=addUnverifiedObservations(older,'pl3','26281',[ticket(2),ticket(3)],Date.parse('2026-10-21T01:00:00Z'))
+ const originalKeys=stored.map(r=>r.key)
+ const visible=sortObservationsNewestFirst(stored)
+ expect(visible.map(r=>r.ticket.primary[2])).toEqual([2,3,1])
+ expect(stored.map(r=>r.key)).toEqual(originalKeys)
+ let raw='';saveObservations({setItem:(_key,value)=>{raw=value}},stored)
+ expect(sortObservationsNewestFirst(loadObservations({getItem:()=>raw})).map(r=>r.ticket.primary[2])).toEqual([2,3,1])
 })

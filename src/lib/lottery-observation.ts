@@ -46,3 +46,5 @@ export function addUnverifiedObservations(rows:LotteryObservation[],id:LotteryId
  if(!/^\d{5,7}$/.test(issue)||tickets.length<1||tickets.length>10)throw Error('请填写官方公告或票面上的原始数字期号（5 至 7 位）')
  const next=[...rows];for(const t of tickets){validateTicket(id,t);const ticket={primary:[...t.primary],secondary:[...t.secondary]};if(!isPositional(id)){ticket.primary.sort((a,b)=>a-b);ticket.secondary.sort((a,b)=>a-b)}const key=`${id}:${issue}:${JSON.stringify(ticket)}`;if(!next.some(r=>r.key===key))next.push({key,note:normalizedNote,id,issue,ticket,cutoff:'',drawTime:'',source:lotteries.find(l=>l.id===id)!.scheduleUrl,addedAt:new Date(now).toISOString(),issueVerification:'unverified'})}if(next.length>1000)throw Error('最多保存 1000 组观察');return next
 }
+
+export function sortObservationsNewestFirst(rows:readonly LotteryObservation[]):LotteryObservation[]{return [...rows].sort((a,b)=>Date.parse(b.addedAt)-Date.parse(a.addedAt))}

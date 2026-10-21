@@ -2,7 +2,7 @@
 import { computed,nextTick,onMounted,onUnmounted,ref,watch } from 'vue'
 import {localDatabase} from '../lib/local-database'
 import { lotteries,formatBall,formatTicket,type LotteryId,type Ticket } from '../lib/picker'
-import { addObservations,addUnverifiedObservations,evaluate,loadObservations,saveObservations,validateDraw,observationStatus,type LotteryObservation,type OfficialIssue } from '../lib/lottery-observation'
+import { sortObservationsNewestFirst,addObservations,addUnverifiedObservations,evaluate,loadObservations,saveObservations,validateDraw,observationStatus,type LotteryObservation,type OfficialIssue } from '../lib/lottery-observation'
 const props=defineProps<{active:boolean}>()
 const emit=defineEmits<{notice:[message:string];change:[count:number]}>()
 const rows=ref<LotteryObservation[]>([]),storageError=ref(''),filter=ref('all'),busy=ref(false),dialog=ref(false),game=ref<LotteryId>('ssq'),tickets=ref<Ticket[]>([]),issues=ref<OfficialIssue[]>([]),issue=ref(''),message=ref(''),saving=ref(false),loadingIssues=ref(false),detail=ref<string|null>(null)
@@ -16,7 +16,7 @@ const issueTouched=ref(false),note=ref('')
 const names=Object.fromEntries(lotteries.map(l=>[l.id,l.name]))
 const labels={pending:'待开奖',checking:'待核对',won:'已命中',lost:'未命中',unsupported:'暂不支持核奖'}
 const status=(r:LotteryObservation)=>!r.result&&r.issueVerification==='unverified'?'待核实期号':labels[observationStatus(r)]
-const visible=computed(()=>rows.value.filter(r=>filter.value==='all'||observationStatus(r)===filter.value))
+const visible=computed(()=>sortObservationsNewestFirst(rows.value).filter(r=>filter.value==='all'||observationStatus(r)===filter.value))
 let writes=Promise.resolve()
 function persist(change:(rows:LotteryObservation[])=>LotteryObservation[]){const operation=writes.catch(()=>{}).then(async()=>{if(storageError.value)throw Error(storageError.value);const next=change(rows.value);await localDatabase.persist(storage=>saveObservations(storage,next));rows.value=next;emit('change',next.length)});writes=operation;return operation}
 async function request(path:string){const response=await fetch(`/api/lottery-observations/${path}`,{signal:AbortSignal.timeout(12000)});let data;try{data=await response.json()}catch{throw Error('当前服务未提供观察接口，请确认使用本项目 Node 服务')}if(!response.ok)throw Error(data.error||'官方查询失败');return data}
