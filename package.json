@@ -10,7 +10,8 @@
     "test": "node --experimental-sqlite node_modules/vitest/vitest.mjs run",
     "update:stocks": "node scripts/update-stocks.mjs",
     "update:hot-stocks": "node scripts/update-hot-stocks.mjs",
-    "start": "node --experimental-sqlite scripts/server.mjs"
+    "start": "node --experimental-sqlite scripts/server.mjs",
+    "package": "node scripts/package-release.mjs"
   },
   "dependencies": {
     "vue": "^3.5.0"

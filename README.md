@@ -1,6 +1,6 @@
 # lucky-picker · 幸运发生器
 
-给今天，一点好运气。一个无需登录、无需后端的随机选号和随机选股网页。
+给今天，一点好运气。一个无需登录、本地运行的随机选号和随机选股应用。
 
 ## 功能
 
@@ -32,6 +32,16 @@ npm run preview  # 预览 dist/ 生产产物
 
 构建结果位于 `dist/`，不能直接通过双击 HTML 打开。数据持久化和行情查询均需要本项目 Node HTTP 服务（见文末部署说明），请使用 `npm run dev`、`npm run preview` 或 `npm start`。
 
+## 打包与部署
+
+```sh
+npm run package
+```
+
+自动运行测试、构建，并在 `releases/` 生成部署压缩包和 SHA256 校验文件。解压后运行 `./start.sh`（Windows 使用 `start.cmd`）；运行机器只需 Node.js 22.12 或更高版本，无需安装 npm 依赖。个人 SQLite 数据不会打入部署包。
+
+完整步骤、Linux 服务配置、SSH 访问、数据备份和升级方法见 [部署文档](docs/DEPLOYMENT.md)。
+
 ## 随机与范围
 
 浏览器 `crypto.getRandomValues` 提供随机源；拒绝采样避免整数映射时的取模偏差。前后区分别独立抽样，单区使用部分 Fisher–Yates 洗牌。生成器遇到随机源异常时返回错误，不降级成伪造结果。
@@ -48,7 +58,7 @@ npm run build
 
 更新脚本直接请求东方财富，逐页抓取（每页 500 条，当前 11 页），校验响应、数据日期、总数、重复代码及市场分类，再以原子替换的方式写入 `src/data/stock-pool.json`。超时、空数据、异常数量或不完整分页会使更新失败并保留上一份完整数据。抓取失败不会自动退回 16 只样本。
 
-网页直接使用已抓取的快照，因此不需要访问者浏览器跨域访问东方财富。开发服务会自动刷新；生产网站需要重新构建并部署。构建时不会强制联网抓取，已有快照可以离线构建。提交更新后的 JSON 到 GitHub，现有 Pages 工作流即可部署新的股票池。
+网页直接使用已抓取的快照，因此不需要访问者浏览器跨域访问东方财富。开发服务会自动刷新；生产网站需要重新构建并部署。构建时不会强制联网抓取，已有快照可以离线构建。更新快照后重新执行打包命令，即可分发新的股票池。
 
 `scripts/stock-pool.mjs` 负责接口字段、分类、完整性校验；`scripts/update-stocks.mjs` 负责请求重试和安全写入。市场分类兼容主板、创业板、科创板、风险警示板及科创板 CDR；名称保留六位代码的前导零并规范化全角字符和空白。
 
@@ -77,9 +87,7 @@ npm run build
 
 ## GitHub Pages
 
-仓库 Settings → Pages → Build and deployment → Source 选择 **GitHub Actions**。工作流 `.github/workflows/deploy.yml` 会在推送 `main` 或手动运行时执行依赖安装、测试、构建与部署。首次启用 Pages 后可手动运行工作流。
-
-部署地址由 GitHub Actions 输出，通常为 `https://YOUR_NAME.github.io/lucky-picker/`。纯静态 Pages 无法提供 SQLite 数据接口；当前完整应用请使用本项目 Node 服务。
+仓库保留的 Pages 工作流仅用于静态页面，无法提供 SQLite 和行情接口。完整应用请按 [部署文档](docs/DEPLOYMENT.md) 运行 Node 服务。
 
 ## 项目结构
 

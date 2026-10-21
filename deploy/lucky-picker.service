@@ -1,0 +1,23 @@
+[Unit]
+Description=Lucky Picker local service
+After=network.target
+
+[Service]
+Type=simple
+User=luckypicker
+Group=luckypicker
+WorkingDirectory=/opt/lucky-picker/current
+ExecStart=/usr/bin/node --experimental-sqlite /opt/lucky-picker/current/start.mjs
+Environment=HOST=127.0.0.1
+Environment=PORT=5173
+Environment=LUCKY_PICKER_DATA_DIR=/var/lib/lucky-picker
+Environment=LUCKY_DATA_DIR=/var/lib/lucky-picker/cache
+StateDirectory=lucky-picker
+UMask=0077
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
