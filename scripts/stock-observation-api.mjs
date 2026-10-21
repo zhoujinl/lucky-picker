@@ -8,10 +8,18 @@ export function parseObservationDaily(payload,symbol,field){
 }
 export function createStockObservationApi({fetch:fetcher=globalThis.fetch,now=()=>new Date(),cacheMs=60000,timeoutMs=10000,maxConcurrent=3}={}){
  const cache=new Map(),pending=new Map();let running=0
- async function get(symbol,from,adjustment){
+ async function get(symbol,from,adjustment,confirmedBefore){
   const url=new URL('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get');url.searchParams.set('param',`${symbol},day,${from},,640,${adjustment}`)
   const response=await fetcher(url,{signal:AbortSignal.timeout(timeoutMs)});if(!response.ok)throw Error(`行情源 HTTP ${response.status}`)
-  return parseObservationDaily(await response.json(),symbol,adjustment==='qfq'?'qfqday':'day')
+  const payload=await response.json()
+  if(adjustment==='qfq'&&payload?.data?.[symbol]?.qfqday===undefined){
+   // Tencent returns `day` for current-day-only qfq requests. Validate its
+   // identity and prices, but never reinterpret these raw rows as adjusted.
+   const unadjusted=parseObservationDaily(payload,symbol,'day')
+   if(unadjusted.every(row=>row.date>=confirmedBefore))return []
+   throw Error('行情源缺少已收盘日期的前复权日线，无法计算收益')
+  }
+  return parseObservationDaily(payload,symbol,adjustment==='qfq'?'qfqday':'day')
  }
  async function quote(code,from){
   const key=code+from,stamp=now();if(cache.has(key)&&stamp-cache.get(key).time<cacheMs)return cache.get(key).value
@@ -20,7 +28,8 @@ export function createStockObservationApi({fetch:fetcher=globalThis.fetch,now=()
   const task=(async()=>{running++;try{
    const symbol=(/^[569]/.test(code)?'sh':/^[48]/.test(code)?'bj':'sz')+code
    if(symbol.startsWith('bj'))throw Error('当前行情源暂不支持北交所观察')
-   const [raw,adjusted,calendar]=await Promise.all([get(symbol,from,''),get(symbol,from,'qfq'),get('sh000001',from,'')]);const today=stamp.toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'})
+   const today=stamp.toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'})
+   const [raw,adjusted,calendar]=await Promise.all([get(symbol,from,'',today),get(symbol,from,'qfq',today),get('sh000001',from,'',today)])
    const mapped=new Map(adjusted.map(r=>[r.date,r]));const days=raw.filter(r=>r.date<today).map(r=>{const a=mapped.get(r.date);if(!a)throw Error('原始与复权日线日期不一致');return {...r,adjustedOpen:a.open,adjustedClose:a.close}})
    const sessions=calendar.filter(r=>r.date<today).map(r=>r.date)
    if(raw.length>=640||calendar.length>=640)throw Error('观察跨度超过行情源范围，无法完整回补')
