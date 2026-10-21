@@ -74,9 +74,9 @@ async function clearHistory(){try{await updateHistory(()=>[]);clearDialog.value?
       <a class="brand" href="./" aria-label="Lucky Picker 首页"><span class="brand-mark"><AppIcon name="sparkle" :size="25"/></span><span>lucky<span class="brand-light">picker</span><span class="brand-dot">.</span></span></a>
       <span class="header-note">把选择交给随机，把惊喜留给生活</span>
       <span class="local-badge"><span></span> 纯粹随机 · 无需登录</span>
+      <LocalDataSettings/>
     </header>
     <main>
-      <LocalDataSettings/>
       <section class="hero">
         <div class="hero-copy"><div class="eyebrow"><span></span> A LITTLE CHANCE, A LITTLE MAGIC</div><h1>给今天，<span>一点好运气。</span><span class="title-spark">✳</span></h1><p>不必纠结选哪一个。轻轻一点，让随机为你带来小小的惊喜。</p></div>
         <div class="hero-art" aria-hidden="true"><span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span><span class="art-star star-one">✧</span><span class="art-star star-two">✳</span><div class="art-ball art-ball-blue">08</div><div class="art-ball art-ball-red">06</div><span class="art-caption">GOOD THINGS ARE ON THE WAY</span></div>
