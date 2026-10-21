@@ -1,0 +1,12 @@
+import {afterEach,describe,it,expect,vi} from 'vitest'
+import {createDatabaseClient} from './local-database'
+const key='lucky-picker:history:v1',keys=[key,'lucky-stock-observations-v1','lucky-picker:lottery-observations:v1']
+const snapshot=(revision=0)=>({version:1,collections:Object.fromEntries(keys.map(k=>[k,{value:k===key?'[]':k===keys[1]?'{"version":1,"records":[]}':'{"version":1,"rows":[]}',revision}]))})
+const response=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}})
+afterEach(()=>vi.unstubAllGlobals())
+describe('local database client',()=>{
+ it('loads from server even without browser storage and serializes writes with fresh revisions',async()=>{let revision=0;const fetcher=vi.fn(async(_url:unknown,options?:RequestInit)=>{if(!options?.method)return response(snapshot());const data=JSON.parse(options.body as string);expect(data.revision).toBe(revision);return response({value:data.value,revision:++revision})});const client=createDatabaseClient(fetcher as typeof fetch);await client.initialize({getItem:()=>{throw Error('blocked')}});expect(client.storage.getItem(key)).toBe('[]');await Promise.all([client.save(key,'[1]'),client.save(key,'[2]')]);expect(client.storage.getItem(key)).toBe('[2]')})
+ it('retains browser originals and reports a rejected migration without replacing server records',async()=>{const fetcher=vi.fn(async(_url:unknown,options?:RequestInit)=>options?.method?response({error:'旧记录损坏'},400):response(snapshot()));const client=createDatabaseClient(fetcher as typeof fetch);await client.initialize({getItem:k=>k===key?'[{}]':null});expect(client.warning()).toContain('旧记录损坏');expect(client.storage.getItem(key)).toBe('[]')})
+ it('blocks subsequent stale writes after a conflict and preserves last committed value',async()=>{const fetcher=vi.fn(async(_url:unknown,options?:RequestInit)=>options?.method?response({error:'其他页面已更新'},409):response(snapshot()));const client=createDatabaseClient(fetcher as typeof fetch);await client.initialize({getItem:()=>null});await expect(client.save(key,'[1]')).rejects.toThrow('其他页面已更新');await expect(client.save(key,'[2]')).rejects.toThrow('刷新');expect(fetcher).toHaveBeenCalledTimes(2);expect(client.storage.getItem(key)).toBe('[]')})
+ it('does not initialize from browser data when the local service fails',async()=>{const client=createDatabaseClient(vi.fn(async()=>response({error:'unavailable'},503)) as typeof fetch);await expect(client.initialize({getItem:()=>null})).rejects.toThrow('unavailable')})
+})

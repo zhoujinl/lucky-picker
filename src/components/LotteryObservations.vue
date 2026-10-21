@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed,nextTick,onMounted,onUnmounted,ref,watch } from 'vue'
+import {localDatabase} from '../lib/local-database'
 import { lotteries,formatBall,formatTicket,type LotteryId,type Ticket } from '../lib/picker'
 import { addObservations,addUnverifiedObservations,evaluate,loadObservations,saveObservations,validateDraw,observationStatus,type LotteryObservation,type OfficialIssue } from '../lib/lottery-observation'
 const props=defineProps<{active:boolean}>()
@@ -16,19 +17,20 @@ const names=Object.fromEntries(lotteries.map(l=>[l.id,l.name]))
 const labels={pending:'待开奖',checking:'待核对',won:'已命中',lost:'未命中',unsupported:'暂不支持核奖'}
 const status=(r:LotteryObservation)=>!r.result&&r.issueVerification==='unverified'?'待核实期号':labels[observationStatus(r)]
 const visible=computed(()=>rows.value.filter(r=>filter.value==='all'||observationStatus(r)===filter.value))
-function persist(next:LotteryObservation[]){if(storageError.value)throw Error(storageError.value);saveObservations(localStorage,next);rows.value=next;emit('change',next.length)}
+let writes=Promise.resolve()
+function persist(change:(rows:LotteryObservation[])=>LotteryObservation[]){const operation=writes.catch(()=>{}).then(async()=>{if(storageError.value)throw Error(storageError.value);const next=change(rows.value);await localDatabase.persist(storage=>saveObservations(storage,next));rows.value=next;emit('change',next.length)});writes=operation;return operation}
 async function request(path:string){const response=await fetch(`/api/lottery-observations/${path}`,{signal:AbortSignal.timeout(12000)});let data;try{data=await response.json()}catch{throw Error('当前服务未提供观察接口，请确认使用本项目 Node 服务')}if(!response.ok)throw Error(data.error||'官方查询失败');return data}
 async function fetchIssues(){const generation=openGeneration;loadingIssues.value=true;try{const data=await request(`issues?id=${game.value}${issue.value?'&issue='+encodeURIComponent(issue.value):''}`);if(generation!==openGeneration)return;issues.value=data.issues||[];message.value=data.message||'';if(!issueTouched.value)issue.value=issues.value[0]?.issue||data.defaultIssue?.issue||issue.value}catch(e){if(generation===openGeneration)message.value=(e as Error).message}finally{if(generation===openGeneration)loadingIssues.value=false}}
 function open(id:LotteryId,values:Ticket[]){openGeneration++;game.value=id;tickets.value=values.map(t=>({primary:[...t.primary],secondary:[...t.secondary]}));issue.value='';issueTouched.value=false;issues.value=[];message.value='';dialog.value=true;void fetchIssues()}
 defineExpose({open})
-async function add(){if(saving.value)return;saving.value=true;try{if(storageError.value)throw Error(storageError.value);if(!/^\d{5,7}$/.test(issue.value))throw Error('请填写官方原始期号（5 至 7 位数字）');const confirmed=issues.value.find(i=>i.issue===issue.value);let next:LotteryObservation[]
- if(confirmed)next=addObservations(rows.value,confirmed,tickets.value)
- else {const result=await request(`result?id=${game.value}&issue=${encodeURIComponent(issue.value)}`);if(result.status==='published')throw Error('此期已经开奖，不能新建观察；请填写待开奖期号');next=addUnverifiedObservations(rows.value,game.value,issue.value,tickets.value)}
- const count=next.length-rows.value.length;persist(next);dialog.value=false;emit('notice',count?`已添加 ${count} 组彩票观察${confirmed?'':'（期号待核实）'}`:'这些号码已在该期观察中')
+async function add(){if(saving.value)return;saving.value=true;try{if(storageError.value)throw Error(storageError.value);if(!/^\d{5,7}$/.test(issue.value))throw Error('请填写官方原始期号（5 至 7 位数字）');const confirmed=issues.value.find(i=>i.issue===issue.value);let confirmedPending=false
+ if(confirmed)confirmedPending=true
+ else {const result=await request(`result?id=${game.value}&issue=${encodeURIComponent(issue.value)}`);if(result.status==='published')throw Error('此期已经开奖，不能新建观察；请填写待开奖期号');}
+ const before=rows.value.length;await persist(current=>confirmedPending?addObservations(current,confirmed!,tickets.value):addUnverifiedObservations(current,game.value,issue.value,tickets.value));const count=rows.value.length-before;dialog.value=false;emit('notice',count?`已添加 ${count} 组彩票观察${confirmed?'':'（期号待核实）'}`:'这些号码已在该期观察中')
  }catch(e){message.value=(e as Error).message}finally{saving.value=false}}
-async function refresh(){if(busy.value||storageError.value)return;busy.value=true;let failed=0;try{for(const r of [...rows.value]){try{const data=await request(`result?id=${r.id}&issue=${encodeURIComponent(r.issue)}`);const current=rows.value.find(x=>x.key===r.key);if(!current)continue;let next:LotteryObservation;if(data.status==='published'){const result=validateDraw(r.id,r.issue,data.result);next={...current,result,drawTime:result.drawTime,issueVerification:'verified',error:undefined}}else {next={...current,error:data.message||'官方完整结果尚未发布'};if(data.status==='source-error')failed++}persist(rows.value.map(x=>x.key===r.key?next:x))}catch(e){failed++;const current=rows.value.find(x=>x.key===r.key);if(current){try{persist(rows.value.map(x=>x.key===r.key?{...x,error:(e as Error).message}:x))}catch(err){storageError.value=(err as Error).message;break}}}}if(failed)emit('notice',`${failed} 组暂未更新，已保留上次完整结果`)}finally{busy.value=false}}
-function remove(r:LotteryObservation){if(!confirm(`移除${names[r.id]}第 ${r.issue} 期这组观察？`))return;try{persist(rows.value.filter(x=>x.key!==r.key))}catch(e){emit('notice',(e as Error).message)}}
-onMounted(()=>{try{rows.value=loadObservations(localStorage);emit('change',rows.value.length);void refresh()}catch(e){storageError.value=(e as Error).message;emit('notice',storageError.value)}})
+async function refresh(){if(busy.value||storageError.value)return;busy.value=true;let failed=0;try{for(const r of [...rows.value]){try{const data=await request(`result?id=${r.id}&issue=${encodeURIComponent(r.issue)}`);const current=rows.value.find(x=>x.key===r.key);if(!current)continue;let next:LotteryObservation;if(data.status==='published'){const result=validateDraw(r.id,r.issue,data.result);next={...current,result,drawTime:result.drawTime,issueVerification:'verified',error:undefined}}else {next={...current,error:data.message||'官方完整结果尚未发布'};if(data.status==='source-error')failed++}await persist(current=>current.map(x=>x.key===r.key?{...x,...next}:x))}catch(e){failed++;const current=rows.value.find(x=>x.key===r.key);if(current){try{await persist(current=>current.map(x=>x.key===r.key?{...x,error:(e as Error).message}:x))}catch(err){storageError.value=(err as Error).message;break}}}}if(failed)emit('notice',`${failed} 组暂未更新，已保留上次完整结果`)}finally{busy.value=false}}
+async function remove(r:LotteryObservation){if(!confirm(`移除${names[r.id]}第 ${r.issue} 期这组观察？`))return;try{await persist(current=>current.filter(x=>x.key!==r.key))}catch(e){emit('notice',(e as Error).message)}}
+onMounted(()=>{try{rows.value=loadObservations(localDatabase.storage);emit('change',rows.value.length);void refresh()}catch(e){storageError.value=(e as Error).message;emit('notice',storageError.value)}})
 watch(()=>props.active,active=>{if(active)void refresh()})
 </script>
 <template>

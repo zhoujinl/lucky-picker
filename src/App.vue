@@ -8,6 +8,8 @@ import StockObservations from './components/StockObservations.vue'
 import LotteryObservations from './components/LotteryObservations.vue'
 import {formatTicket,generateTickets,lotteries,pickStock,replaceTicket,type LotteryId,type Ticket} from './lib/picker'
 import {readHistory,saveHistory,type HistoryEntry} from './lib/history'
+import LocalDataSettings from './components/LocalDataSettings.vue'
+import {localDatabase} from './lib/local-database'
 import {copyText} from './lib/clipboard'
 import {stocks,stockPoolUpdatedAt,stockPoolFetchedAt,stockPoolCoverage,stockSources,type Stock} from './data/stocks'
 const mode=ref<'lottery'|'stock'>('lottery')
@@ -24,7 +26,7 @@ const lotteryObservationCount=ref(0)
 function observeStock(value:Stock,source:'all'|'hot'){stockObservations.value?.addStock(value,source);stockMode.value='watch'}
 function isStockObserved(code:string){return stockObservations.value?.hasActive(code)??false}
 function observeTickets(values:Ticket[]){lotteryObservations.value?.open(selected.value,values)}
-const history=ref<HistoryEntry[]>(readHistory())
+const history=ref<HistoryEntry[]>(readHistory(localDatabase.storage))
 const notice=ref('')
 const storageWarning=ref('')
 const manualCopy=ref('')
@@ -34,9 +36,14 @@ const generation=ref(0)
 let timer:ReturnType<typeof setTimeout>|undefined
 function notify(message:string){notice.value=message;clearTimeout(timer);timer=setTimeout(()=>notice.value='',3500)}
 onUnmounted(()=>clearTimeout(timer))
+let historyQueue=Promise.resolve()
+function updateHistory(change:(rows:HistoryEntry[])=>HistoryEntry[]){
+ const operation=historyQueue.catch(()=>{}).then(async()=>{const next=change(history.value);await localDatabase.persist(storage=>saveHistory(next,storage));history.value=next;storageWarning.value=''})
+ historyQueue=operation;return operation
+}
 function remember(label:string,lines:string[]){
-  history.value=[{id:crypto.randomUUID(),createdAt:new Date().toISOString(),label,lines},...history.value].slice(0,50)
-  storageWarning.value=saveHistory(history.value)?'':'浏览器无法保存记录，本次结果仍可查看和复制。'
+ const entry={id:crypto.randomUUID(),createdAt:new Date().toISOString(),label,lines}
+ void updateHistory(rows=>[entry,...rows].slice(0,50)).catch(e=>{storageWarning.value=`历史记录未保存：${(e as Error).message}；本次结果仍可查看和复制。`})
 }
 function generate(count:1|10){
   try {
@@ -59,7 +66,7 @@ function drawStock(){
   try{stock.value=pickStock();generation.value++;remember('幸运选股',[`${stock.value.code} ${stock.value.name} · ${stock.value.market}`]);notify('你的幸运股票已揭晓')}
   catch(e){notify(e instanceof Error?e.message:'抽取失败，请重试')}
 }
-function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?'':'无法清除浏览器中的已存记录，请检查浏览器存储权限。';clearDialog.value?.close();notify('当前记录已清空')}
+async function clearHistory(){try{await updateHistory(()=>[]);clearDialog.value?.close();notify('当前记录已清空')}catch(e){storageWarning.value=(e as Error).message;notify('清空失败，原记录已保留')}}
 </script>
 <template>
   <div class="app-shell">
@@ -69,6 +76,7 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
       <span class="local-badge"><span></span> 纯粹随机 · 无需登录</span>
     </header>
     <main>
+      <LocalDataSettings/>
       <section class="hero">
         <div class="hero-copy"><div class="eyebrow"><span></span> A LITTLE CHANCE, A LITTLE MAGIC</div><h1>给今天，<span>一点好运气。</span><span class="title-spark">✳</span></h1><p>不必纠结选哪一个。轻轻一点，让随机为你带来小小的惊喜。</p></div>
         <div class="hero-art" aria-hidden="true"><span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span><span class="art-star star-one">✧</span><span class="art-star star-two">✳</span><div class="art-ball art-ball-blue">08</div><div class="art-ball art-ball-red">06</div><span class="art-caption">GOOD THINGS ARE ON THE WAY</span></div>
@@ -119,6 +127,6 @@ function clearHistory(){history.value=[];storageWarning.value=saveHistory([])?''
     </main>
     <footer class="site-footer"><div class="footer-brand"><AppIcon name="sparkle" :size="16"/>lucky picker<span>让选择，轻松一点。</span></div><p>随机选号不提高中奖概率 · 随机选股仅供娱乐</p><span class="footer-end">MADE FOR LITTLE POSSIBILITIES</span></footer>
     <div class="toast" :class="{visible:notice}" role="status" aria-live="polite"><AppIcon name="info" :size="17"/>{{notice}}</div>
-    <dialog ref="clearDialog" aria-labelledby="clear-title" class="confirm-dialog" @click="($event.target===$event.currentTarget) && clearDialog?.close()"><section><h2 id="clear-title">清空最近记录？</h2><p>将移除当前浏览器中的全部生成记录。</p><div class="dialog-actions"><button class="button button-secondary" autofocus @click="clearDialog?.close()">取消</button><button class="button button-primary" @click="clearHistory">确认清空</button></div></section></dialog>
+    <dialog ref="clearDialog" aria-labelledby="clear-title" class="confirm-dialog" @click="($event.target===$event.currentTarget) && clearDialog?.close()"><section><h2 id="clear-title">清空最近记录？</h2><p>将移除本机数据库中的全部生成记录，观察列表不受影响。</p><div class="dialog-actions"><button class="button button-secondary" autofocus @click="clearDialog?.close()">取消</button><button class="button button-primary" @click="clearHistory">确认清空</button></div></section></dialog>
   </div>
 </template>

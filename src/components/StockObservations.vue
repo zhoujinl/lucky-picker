@@ -2,16 +2,24 @@
 import {computed,ref,watch} from 'vue'
 import {readObservations,saveObservations,evaluateObservation,fetchObservation,baselineDate,type StockObservation} from '../lib/stock-observations'
 import './stock-observations.css'
+import {localDatabase} from '../lib/local-database'
 const props=defineProps<{active:boolean}>()
 const emit=defineEmits<{notice:[message:string];change:[count:number]}>()
-const initial=readObservations(),readFailed=Boolean(initial.error),records=ref(initial.records),storageError=ref(initial.error),filter=ref('all'),busy=ref(false),selected=ref<string|null>(null)
+const initial=readObservations(localDatabase.storage),readFailed=Boolean(initial.error),records=ref(initial.records),storageError=ref(initial.error),filter=ref('all'),busy=ref(false),selected=ref<string|null>(null)
 const evaluations=computed(()=>records.value.map(record=>({record,result:evaluateObservation(record)})))
 const visible=computed(()=>evaluations.value.filter(({result})=>filter.value==='all'||(filter.value==='done'?result.completed:!result.completed)))
-function persist(){try{saveObservations(records.value,undefined,readFailed);storageError.value=''}catch{storageError.value=readFailed?'原始观察存储读取失败，已阻止覆盖；本次变更仅保存在当前页面。请恢复浏览器存储后重新打开页面。':'本次观察变更无法持久保存；关闭页面后可能丢失。';emit('notice',storageError.value)}emit('change',records.value.filter(r=>!evaluateObservation(r).completed).length)}
+let writes=Promise.resolve()
+function persist(change:(rows:StockObservation[])=>StockObservation[]){
+ const operation=writes.catch(()=>{}).then(async()=>{if(readFailed)throw Error('本地观察数据读取失败，请先导出备份后处理');const next=change(records.value);await localDatabase.persist(storage=>saveObservations(next,storage));records.value=next;storageError.value='';emit('change',next.filter(r=>!evaluateObservation(r).completed).length)})
+ writes=operation;return operation
+}
+function report(e:unknown){storageError.value=(e as Error).message;emit('notice','股票观察保存失败：'+storageError.value)}
 function hasActive(code:string){return records.value.some(r=>r.code===code&&!evaluateObservation(r).completed)}
-function addStock(stock:{code:string;name:string;market:string},source:'all'|'hot') {if(hasActive(stock.code)){emit('notice','该股票已在观察中');return}if(!/^\d{6}$/.test(stock.code)){emit('notice','股票代码无效');return}records.value.unshift({...stock,source,id:crypto.randomUUID(),addedAt:new Date().toISOString()});persist();emit('notice','已加入股票观察');if(props.active)void refresh()}
-function remove(record:StockObservation){if(!window.confirm(`移除 ${record.name} 的这次观察？`))return;records.value=records.value.filter(r=>r.id!==record.id);persist()}
-async function refresh(){if(busy.value)return;busy.value=true;try{for(const record of [...records.value]){try{const snapshot=await fetchObservation(record);if(records.value.some(r=>r.id===record.id)){record.snapshot=snapshot;record.error=''}}catch(e){record.error=e instanceof Error?e.message:'行情更新失败'}persist()}}finally{busy.value=false}}
+async function addStock(stock:{code:string;name:string;market:string},source:'all'|'hot') {
+ try{if(!/^\d{6}$/.test(stock.code))throw Error('股票代码无效');await persist(rows=>{if(rows.some(r=>r.code===stock.code&&!evaluateObservation(r).completed))throw Error('该股票已在观察中');return [{...stock,source,id:crypto.randomUUID(),addedAt:new Date().toISOString()},...rows]});emit('notice','已加入股票观察');if(props.active)void refresh()}catch(e){report(e)}
+}
+async function remove(record:StockObservation){if(!window.confirm(`移除 ${record.name} 的这次观察？`))return;try{await persist(rows=>rows.filter(r=>r.id!==record.id))}catch(e){report(e)}}
+async function refresh(){if(busy.value||readFailed)return;busy.value=true;try{for(const record of [...records.value]){let patch:Partial<StockObservation>;try{patch={snapshot:await fetchObservation(record),error:undefined}}catch(e){patch={error:e instanceof Error?e.message:'行情更新失败'}}try{await persist(rows=>rows.map(r=>r.id===record.id?{...r,...patch}:r))}catch(e){report(e);break}}}finally{busy.value=false}}
 watch(()=>props.active,active=>{if(active)void refresh()},{immediate:true})
 watch(()=>records.value.length,()=>emit('change',records.value.filter(r=>!evaluateObservation(r).completed).length),{immediate:true})
 const percent=(n:number)=>`${n>0?'+':''}${n.toFixed(2)}%`

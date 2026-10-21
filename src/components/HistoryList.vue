@@ -21,6 +21,6 @@ function date(iso:string){return new Intl.DateTimeFormat('zh-CN',{month:'2-digit
         <div v-if="expanded===entry.id" class="history-detail"><p v-for="(line,i) in entry.lines" :key="i">{{line}}</p><button class="text-button" @click="$emit('copy',entry.label+'\n'+entry.lines.join('\n'))"><AppIcon name="copy" :size="14"/>复制记录</button></div>
       </article>
     </div>
-    <p class="storage-note"><AppIcon name="shield" :size="13"/>仅保存在当前浏览器，最多 50 条</p>
+    <p class="storage-note"><AppIcon name="shield" :size="13"/>保存在本机数据库，最多 50 条</p>
   </section>
 </template>
