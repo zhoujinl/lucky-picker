@@ -12,3 +12,7 @@ it('uses official exact-history query params and 3d official name',async()=>{con
 it('rechecks corrections after cache expiry and coalesces simultaneous requests',async()=>{let time=0,n=0;const api=createLotteryObservationApi({now:()=>time,fetchImpl:async()=>({ok:true,json:async()=>({state:0,result:[{...row,blue:++n===1?'03':'04'}]})})});const [a,b]=await Promise.all([api.getResult('ssq','2026120'),api.getResult('ssq','2026120')]);expect(a.result.secondary).toEqual(b.result.secondary);expect(n).toBe(1);time=61000;expect((await api.getResult('ssq','2026120')).result.secondary).toEqual([4])})
 it('rejects impossible calendar dates',()=>expect(()=>normalizeOfficialDraw('ssq','2026120',{...row,date:'2026-02-31(二)'})).toThrow())
 it('returns an exact, navigable official result source',async()=>{const api=createLotteryObservationApi({fetchImpl:async()=>({ok:true,json:async()=>({state:0,result:[row]})})});const source=new URL((await api.getResult('ssq','2026120')).result.source);expect(source.searchParams.get('issueStart')).toBe('2026120')})
+it('prefills an editable current issue from the latest official result',async()=>{
+ const api=createLotteryObservationApi({now:()=>Date.parse('2026-10-21T04:00:00Z'),fetchImpl:async()=>({ok:true,json:async()=>({state:0,result:[row]})})})
+ const data=await api.getIssues('ssq');expect(data.defaultIssue.issue).toBe('2026121');expect(data.defaultIssue.estimated).toBe(true);expect(data.issues).toEqual([])
+})
